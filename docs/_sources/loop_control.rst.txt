@@ -8,13 +8,13 @@ The `if` statement in stack-based programming works as follows:
 
 .. code-block:: text
 
-    [quoted instruction if condition false]
-    [quoted instruction if condition true]
     expression or boolean value
+    [quoted instruction to execute if condition true]
+    [quoted instruction to execute if condition false]
     if
 
 
-This statement pops a boolean value or expression from the stack. If the value is `true`, it drops the second quoted instruction in the stack and executes the first quoted instruction. Otherwise, it executes the second quoted instruction.
+This statement pops two quoted instructions and a boolean value or expression from the stack. If the value is `true`, it executes the first instruction. Otherwise, it executes the second instruction.
 
 Example:
 
@@ -22,7 +22,7 @@ Suppose we have the following instructions on the stack:
 
 .. code-block:: text
 
-    [3 2 *] [5 6 *] true if
+    true [5 6 *] [3 2 *] if
 
 After executing this `if` statement, the result will be:
 
@@ -30,9 +30,9 @@ After executing this `if` statement, the result will be:
 
     30
 
-Because `true` is on the stack, it executes the first quoted instruction in the stack  `[5 6 *]`, which multiplies 5 and 6, resulting in 30.
+Because `true` is on the stack, it executes the second quoted instruction in the stack  `[5 6 *]`, which multiplies 5 and 6, resulting in 30.
 
-If the boolean value is `false`, it executes the second quoted instruction.
+If the boolean value is `false`, it executes the first quoted instruction.
 
 **nop**
 ~~~~~~~
@@ -45,11 +45,11 @@ Suppose we have the following instructions on the stack:
 
 .. code-block:: text
 
-    [nop] [5 6 *] false if
+    empty [nop] [ 6 *] if
 
 After executing this `if` statement, the program will do nothing.
 
-Because `false` is on the stack, it executes the second quoted instruction `[nop]`.
+Assuming the stack was empty before executing the code, `false` will be on the top of the stack, so if will execute the second quoted instruction `[nop]` preventing the program from a stack underflow.
 
 The `nop` operation has no effect on the stack.
 

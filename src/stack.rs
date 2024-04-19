@@ -720,65 +720,49 @@ impl Stack {
                             } else if instr.eq("nop") {
                                 return Ok(());
                             } else if instr.eq("if") {
-                                match self.pop() {
+                                let condfalse = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let condtrue = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                return match self.pop() {
                                     Ok(x) => match x {
                                         StackElem::Value(x) => match x {
                                             Values::False => {
-                                                match self.pop() {
-                                                    Ok(x) => x,
-                                                    Err(e) => {
-                                                        self.next += 1;
-                                                        return Err(e);
-                                                    }
-                                                };
-                                                return match self.pop() {
-                                                    Ok(x) => match x.get_instructions() {
-                                                        Ok(ins) => self.execute(ins, env),
-                                                        Err(e) => {
-                                                            self.next += 3;
-                                                            Err(e)
-                                                        }
-                                                    },
+                                                match condfalse.get_instructions() {
+                                                    Ok(ins) => self.execute(ins, env),
                                                     Err(e) => {
                                                         self.next += 2;
-                                                        Err(e)
+                                                        return Err(e);
                                                     }
-                                                };
+                                                }
                                             }
                                             Values::True => {
-                                                let arg1 = match self.pop() {
-                                                    Ok(x) => match x.get_instructions() {
-                                                        Ok(ins) => ins,
-                                                        Err(e) => {
-                                                            self.next += 2;
-                                                            return Err(e);
-                                                        }
-                                                    },
-                                                    Err(e) => {
-                                                        self.next += 1;
-                                                        return Err(e);
-                                                    }
-                                                };
-                                                match self.pop() {
-                                                    Ok(x) => x,
+                                                match condtrue.get_instructions() {
+                                                    Ok(ins) => self.execute(ins, env),
                                                     Err(e) => {
                                                         self.next += 2;
                                                         return Err(e);
                                                     }
-                                                };
-                                                return self.execute(arg1, env);
+                                                }
                                             }
                                             _ => {
-                                                self.next += 1;
-                                                return Err(Errors::InvalidOperands);
+                                                self.next += 2;
+                                                Err(Errors::InvalidOperands)
                                             }
                                         }
                                         _ => {
-                                            self.next += 1;
-                                            return Err(Errors::InvalidOperands);
+                                            self.next += 2;
+                                            Err(Errors::InvalidOperands)
                                         }
                                     }
-                                    Err(e) => return Err(e)
+                                    Err(e) => Err(e)
                                 };
                                 // Stack Operations
                             } else if instr.eq("quote") {
