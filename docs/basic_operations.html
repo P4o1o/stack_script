@@ -67,6 +67,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#comparison-operations">Comparison Operations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#equal"><strong>Equal (==)</strong></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#not-equal"><strong>Not Equal (!=)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#less-than"><strong>Less Than (&lt;)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#greater-than"><strong>Greater Than (&gt;)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#less-than-or-equal-to"><strong>Less Than or Equal To (&lt;=)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#greater-than-or-equal-to"><strong>Greater Than or Equal To (&gt;=)</strong></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#type-casting">Type Casting</a><ul>
@@ -222,6 +226,46 @@ false not =&gt; true
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 5 != =&gt; false
 5 6 != =&gt; true
+</pre></div>
+</div>
+</section>
+<section id="less-than">
+<h3><strong>Less Than (&lt;)</strong><a class="headerlink" href="#less-than" title="Link to this heading"></a></h3>
+<p>The <cite>&lt;</cite> operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes <cite>true</cite> if the second value is greater than the first, otherwise pushes <cite>false</cite>.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 6 &lt; =&gt; true
+6 5 &lt; =&gt; false
+5 5 &lt; =&gt; false
+</pre></div>
+</div>
+</section>
+<section id="greater-than">
+<h3><strong>Greater Than (&gt;)</strong><a class="headerlink" href="#greater-than" title="Link to this heading"></a></h3>
+<p>The <cite>&gt;</cite> operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes <cite>true</cite> if the first value is greater than the second, otherwise pushes <cite>false</cite>.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 6 &gt; =&gt; false
+6 5 &gt; =&gt; true
+5 5 &gt; =&gt; false
+</pre></div>
+</div>
+</section>
+<section id="less-than-or-equal-to">
+<h3><strong>Less Than or Equal To (&lt;=)</strong><a class="headerlink" href="#less-than-or-equal-to" title="Link to this heading"></a></h3>
+<p>The <cite>&lt;=</cite> operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes <cite>true</cite> if the second value is greater than or equal to the first, otherwise pushes <cite>false</cite>.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 6 &lt;= =&gt; true
+6 5 &lt;= =&gt; false
+5 5 &lt;= =&gt; true
+</pre></div>
+</div>
+</section>
+<section id="greater-than-or-equal-to">
+<h3><strong>Greater Than or Equal To (&gt;=)</strong><a class="headerlink" href="#greater-than-or-equal-to" title="Link to this heading"></a></h3>
+<p>The <cite>&gt;=</cite> operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes <cite>true</cite> if the first value is greater than or equal to the second, otherwise pushes <cite>false</cite>.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 6 &gt;= =&gt; false
+6 5 &gt;= =&gt; true
+5 5 &gt;= =&gt; true
 </pre></div>
 </div>
 </section>

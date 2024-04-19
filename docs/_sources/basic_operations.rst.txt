@@ -153,6 +153,59 @@ Example:
     5 5 != => false
     5 6 != => true
 
+**Less Than (<)**
+~~~~~~~~~~~~~~~~~~
+
+The `<` operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes `true` if the second value is greater than the first, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 6 < => true
+    6 5 < => false
+    5 5 < => false
+
+**Greater Than (>)**
+~~~~~~~~~~~~~~~~~~~~~
+
+The `>` operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes `true` if the first value is greater than the second, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 6 > => false
+    6 5 > => true
+    5 5 > => false
+
+**Less Than or Equal To (<=)**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `<=` operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes `true` if the second value is greater than or equal to the first, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 6 <= => true
+    6 5 <= => false
+    5 5 <= => true
+
+**Greater Than or Equal To (>=)**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `>=` operator compares the top two values on the stack. It pops the top two values from the stack, compares them, and pushes `true` if the first value is greater than or equal to the second, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 6 >= => false
+    6 5 >= => true
+    5 5 >= => true
+
+
 Type Casting
 ------------
 

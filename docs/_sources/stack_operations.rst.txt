@@ -65,7 +65,7 @@ Example:
 **compose**
 ~~~~~~~~~~~
 
-The `compose` operation composes a new instruction by conatenating the top two instructions on the stack and pushes the result onto the stack.
+The `compose` operation composes a new instruction by concatenating the top two instructions on the stack and pushes the result onto the stack.
 
 Example:
 

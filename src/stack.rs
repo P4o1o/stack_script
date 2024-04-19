@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use crate::environments::Environment;
 use std::ops::{Add, Div, Mul, Rem, Sub, BitAnd, BitOr, BitXor, Not};
 
@@ -226,7 +227,30 @@ impl PartialEq for StackElem {
     }
 }
 
+impl PartialOrd for StackElem {
+    fn partial_cmp(&self, other: &StackElem) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (StackElem::Value(a), StackElem::Value(b)) => match (a, b) {
+                (Values::Int(x), Values::Int(y)) => Some(x.cmp(y)),
+                (Values::Float(x), Values::Float(y)) => x.partial_cmp(y),
+                (Values::Float(x), Values::Int(y)) => x.partial_cmp(&(*y as f32).into()),
+                (Values::Int(x), Values::Float(y)) => (*x as f32).partial_cmp(y),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+
 impl StackElem {
+
+    fn boolean(val :bool) -> StackElem{
+        if val{
+            return StackElem::Value(Values::True)
+        }
+        StackElem::Value(Values::False)
+    }
 
     fn pow(self, exp: StackElem) -> Result<StackElem, Errors> {
         match (self, exp) {
@@ -716,6 +740,110 @@ impl Stack {
                                         return Err(e);
                                     }
                                 }
+                            }else if instr.eq(">"){
+                                let arg1 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let arg0 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                let res = match arg0.partial_cmp(&arg1) {
+                                    Some(x) => x == Ordering::Greater,
+                                    None => {
+                                        self.next += 2;
+                                        return Err(Errors::InvalidOperands);
+                                    }
+                                };
+                                match self.push(StackElem::boolean(res)) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        self.next += 2;
+                                        return Err(e);
+                                    }
+                                }
+                            }else if instr.eq(">="){
+                                let arg1 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let arg0 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                let res = match arg0.partial_cmp(&arg1) {
+                                    Some(x) => x == Ordering::Greater || x == Ordering::Equal,
+                                    None => {
+                                        self.next += 2;
+                                        return Err(Errors::InvalidOperands);
+                                    }
+                                };
+                                match self.push(StackElem::boolean(res)) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        self.next += 2;
+                                        return Err(e);
+                                    }
+                                }
+                            }else if instr.eq("<"){
+                                let arg1 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let arg0 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                let res = match arg0.partial_cmp(&arg1) {
+                                    Some(x) => x == Ordering::Less,
+                                    None => {
+                                        self.next += 2;
+                                        return Err(Errors::InvalidOperands);
+                                    }
+                                };
+                                match self.push(StackElem::boolean(res)) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        self.next += 2;
+                                        return Err(e);
+                                    }
+                                }
+                            }else if instr.eq("<="){
+                                let arg1 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let arg0 = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                let res = match arg0.partial_cmp(&arg1) {
+                                    Some(x) => x == Ordering::Less || x == Ordering::Equal,
+                                    None => {
+                                        self.next += 2;
+                                        return Err(Errors::InvalidOperands);
+                                    }
+                                };
+                                match self.push(StackElem::boolean(res)) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        self.next += 2;
+                                        return Err(e);
+                                    }
+                                }
                                 // Flow Control
                             } else if instr.eq("nop") {
                                 return Ok(());
@@ -961,7 +1089,7 @@ impl Stack {
                     quote += 1;
                     instr.push(charact);
                 },
-                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '(' | ')' => instr.push(charact),
+                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '(' | ')' | '<' | '>' => instr.push(charact),
                 ' ' | '\n' | '\t' | '\r' => {
                     match quote {
                         0 => {
