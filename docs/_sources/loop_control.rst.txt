@@ -1,0 +1,68 @@
+Loop Control
+------------
+
+**if**
+~~~~~~
+
+The `if` statement in stack-based programming works as follows:
+
+.. code-block:: text
+
+    [quoted instruction if condition false]
+    [quoted instruction if condition true]
+    expression or boolean value
+    if
+
+
+This statement pops a boolean value or expression from the stack. If the value is `true`, it drops the second quoted instruction in the stack and executes the first quoted instruction. Otherwise, it executes the second quoted instruction.
+
+Example:
+
+Suppose we have the following instructions on the stack:
+
+.. code-block:: text
+
+    [3 2 *] [5 6 *] true if
+
+After executing this `if` statement, the result will be:
+
+.. code-block:: text
+
+    30
+
+Because `true` is on the stack, it executes the first quoted instruction in the stack  `[5 6 *]`, which multiplies 5 and 6, resulting in 30.
+
+If the boolean value is `false`, it executes the second quoted instruction.
+
+**nop**
+~~~~~~~
+
+The `nop` operation simply does nothing. It can be useful as a placeholder or for alignment purposes.
+
+Example:
+
+Suppose we have the following instructions on the stack:
+
+.. code-block:: text
+
+    [nop] [5 6 *] false if
+
+After executing this `if` statement, the program will do nothing.
+
+Because `false` is on the stack, it executes the second quoted instruction `[nop]`.
+
+The `nop` operation has no effect on the stack.
+
+Example:
+
+Suppose we have the following instructions on the stack:
+
+.. code-block:: text
+
+    5 3 + nop
+
+After executing the `nop` operation, the stack remains unchanged:
+
+.. code-block:: text
+
+    8

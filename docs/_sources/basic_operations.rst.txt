@@ -1,0 +1,177 @@
+Basic Operations
+================
+
+Introduction
+------------
+
+In stack-based programming with Reverse Polish Notation (RPN), operations are performed by manipulating a stack data structure. RPN expressions are written in postfix notation, where operators follow their operands. This allows for efficient calculations without the need for parentheses or precedence rules.
+
+Mathematical Operations
+------------------------
+
+**Addition (+)**
+~~~~~~~~~~~~~~~~
+
+The `+` operator adds two numbers by popping them from the top of the stack, performing the addition operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. If either operand is a floating-point number, the result will be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    5 3 + => 8.0
+
+**Subtraction (-)**
+~~~~~~~~~~~~~~~~~~~
+
+The `-` operator subtracts the top value on the stack from the second-top value by popping them from the stack, performing the subtraction operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. If either operand is a floating-point number, the result will be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    5 3 - => 2.0
+
+**Multiplication (*)**
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The `*` operator multiplies two numbers by popping them from the top of the stack, performing the multiplication operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. If either operand is a floating-point number, the result will be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    5 3 * => 15.0
+
+**Division (/)**
+~~~~~~~~~~~~~~~~
+
+The `/` operator divides the second-top value on the stack by the top value by popping them from the stack, performing the division operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. The result will always be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    11 5 / => 2
+
+**Modulus (%)**
+~~~~~~~~~~~~~~~~
+
+The `%` operator calculates the remainder of dividing the second-top value on the stack by the top value by popping them from the stack, performing the modulus operation, and pushing the result back onto the stack. This operation is only supported for integer numbers.
+
+Example:
+
+.. code-block:: text
+
+    10 3 % => 1
+
+**Exponential (pow)**
+~~~~~~~~~~~~~~~~~~~~~
+
+The `pow` operator raises the second-top value on the stack to the power of the top value by popping them from the stack, performing the exponentiation operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. The result will always be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    2 3 pow => 8.0
+
+Boolean Operations
+-------------------
+
+**Logical AND (and)**
+~~~~~~~~~~~~~~~~~~~~~
+
+The `and` operator performs a logical AND operation between the top two boolean values on the stack. It pops the top two values from the stack, performs the logical AND operation, and pushes the result back onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    true true and => true
+    true false and => false
+
+**Logical OR (or)**
+~~~~~~~~~~~~~~~~~~~~
+
+The `or` operator performs a logical OR operation between the top two boolean values on the stack. It pops the top two values from the stack, performs the logical OR operation, and pushes the result back onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    true false or => true
+    false false or => false
+
+**Logical XOR (xor)**
+~~~~~~~~~~~~~~~~~~~~~~
+
+The `xor` operator performs a logical XOR operation between the top two boolean values on the stack. It pops the top two values from the stack, performs the logical XOR operation, and pushes the result back onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    true true xor => false
+    true false xor => true
+
+**Logical NOT (not)**
+~~~~~~~~~~~~~~~~~~~~~~
+
+The `not` operator performs a logical NOT operation on the top boolean value on the stack. It pops the top value from the stack, performs the logical NOT operation, and pushes the result back onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    true not => false
+    false not => true
+
+Comparison Operations
+----------------------
+
+**Equal (==)**
+~~~~~~~~~~~~~~~
+
+The `==` operator compares the top two values on the stack for equality. It pops the top two values from the stack, compares them, and pushes `true` if they are equal, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 5 == => true
+    5 6 == => false
+
+**Not Equal (!=)**
+~~~~~~~~~~~~~~~~~~~
+
+The `!=` operator compares the top two values on the stack for inequality. It pops the top two values from the stack, compares them, and pushes `true` if they are not equal, otherwise pushes `false`.
+
+Example:
+
+.. code-block:: text
+
+    5 5 != => false
+    5 6 != => true
+
+Type Casting
+------------
+
+**Integer Casting (int)**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `int` operator converts a floating-point number on the stack to an integer by truncating the decimal part. It pops the top value from the stack, performs the conversion, and pushes the integer result back onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    5.7 int => 5
+    3.14 int => 3
+
+Exit Operation
+--------------
+
+**Exit (exit)**
+~~~~~~~~~~~~~~~~
+
+The `exit` operation terminates the execution of the program.

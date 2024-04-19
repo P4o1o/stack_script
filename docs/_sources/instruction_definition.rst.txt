@@ -1,0 +1,76 @@
+Instruction Definition
+----------------------
+
+**define**
+~~~~~~~~~~
+
+The `define` operation allows you to define composite instructions by grouping multiple instructions under a single name.
+
+Syntax:
+
+.. code-block:: text
+
+    [instructions] define(instruction_name)
+
+This syntax defines an instruction named `instruction_name` consisting of the instructions enclosed in square brackets.
+
+Example:
+
+Suppose we want to define an instruction named "add_and_double" that adds two numbers and then doubles the result:
+
+.. code-block:: text
+
+    [+ dup *] define(add_and_double)
+
+When calling `add_and_double`, it will execute the instructions `[+ dup *]` as a single unit.
+
+.. code-block:: text
+
+    3 4 add_and_double => 49
+
+
+**delete**
+~~~~~~~~~~
+
+The `delete` operation allows you to forget a previously defined instruction.
+
+Syntax:
+
+.. code-block:: text
+
+    delete(instruction_name)
+
+This syntax deletes the instruction named `instruction_name` from the list of defined instructions.
+
+Example:
+
+Suppose we want to delete the previously defined instruction "add_and_double":
+
+.. code-block:: text
+
+    delete(add_and_double)
+
+After executing this operation, the "add_and_double" instruction will no longer be available for use.
+
+**isdef**
+~~~~~~~~~
+
+The `isdef` operation checks if a particular instruction is defined and returns a boolean value.
+
+Syntax:
+
+.. code-block:: text
+
+    isdef(instruction_name)
+
+This syntax returns `true` if the instruction named `instruction_name` is defined, otherwise it returns `false`.
+
+Example:
+
+Suppose we want to check if the instruction "add_and_double" is defined:
+
+.. code-block:: text
+
+    isdef(add_and_double)
+
+This will return `true` if "add_and_double" is defined, and `false` otherwise.

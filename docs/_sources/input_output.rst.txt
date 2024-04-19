@@ -1,0 +1,32 @@
+Input/Output
+------------
+
+**print**
+~~~~~~~~~
+
+The `print` operation prints the top value of the stack without removing it.
+
+Example:
+
+Suppose we have the following instructions on the stack:
+
+.. code-block:: text
+
+    42 print
+
+After executing the `print` operation, the value 42 will be printed to the output.
+
+**printall**
+~~~~~~~~~~~~
+
+The `printall` operation prints all values on the stack without removing them. It prints the values from top to bottom.
+
+Example:
+
+Suppose we have the following instructions on the stack:
+
+.. code-block:: text
+
+    1 2 3 printall
+
+After executing the `printall` operation, the values 1, 2, and 3 will be printed to the output, each separated by a new line.

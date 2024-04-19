@@ -1,0 +1,107 @@
+Stack Operations
+----------------
+
+**Pushing Instructions**
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instructions can be pushed onto the stack by enclosing them in square brackets []. These instructions can then be executed using the `apply` operation.
+
+
+**drop**
+~~~~~~~~
+
+The `drop` operation removes the top value from the stack.
+
+Example:
+
+.. code-block:: text
+
+    5 3 drop => 5
+
+**dig**
+~~~~~~~
+
+The `dig` operation pops a number from the stack and then digs that number deep into the stack. If the stack is deep enough, it replaces the top value with the value found at the specified depth(it starts from 0).
+
+Example:
+
+.. code-block:: text
+
+    5 3 2 4 3 dig => 5 3 2 4 5
+
+**dup**
+~~~~~~~
+
+The `dup` operation duplicates the top value on the stack and pushes the duplicate onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    4 dup => 4 4
+
+**swap**
+~~~~~~~~
+
+The `swap` operation swaps the positions of the top two values on the stack.
+
+Example:
+
+.. code-block:: text
+
+    5 3 swap => 3 5
+
+**top**
+~~~~~~~
+
+The `top` operation duplicates the top value on the stack and pushes it onto the stack without removing the original.
+
+Example:
+
+.. code-block:: text
+
+    4 5 7 3 2 1 top => 4
+
+**compose**
+~~~~~~~~~~~
+
+The `compose` operation composes a new instruction by conatenating the top two instructions on the stack and pushes the result onto the stack.
+
+Example:
+
+.. code-block:: text
+
+    [swap] [apply] compose => [swap apply]
+
+**apply**
+~~~~~~~~~
+
+The `apply` operation pops a list of instructions from the stack and executes them. This is typically used to execute instructions pushed onto the stack using square brackets.
+
+Example:
+
+.. code-block:: text
+
+    [3 4 *] apply => 12
+
+**quote**
+~~~~~~~~~
+
+The `quote` operation quotes the first value on the stack.
+
+.. code-block:: text
+
+    3 quote => [3]
+
+**clear**
+~~~~~~~~~
+
+The `clear` operation clears the entire stack.
+
+**Special Values**
+~~~~~~~~~~~~~~~~~~
+
+- `last`: A boolean value indicating whether the current value is the last pushed onto the stack.
+- `empty`: A boolean value indicating whether the stack is empty.
+- `sizemax`: The maximum size of the stack.
+- `size`: The current size of the stack. When executed, it pushes the size onto the stack.
