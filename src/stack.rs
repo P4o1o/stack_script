@@ -864,7 +864,7 @@ impl Stack {
                                         StackElem::Value(x) => match x {
                                             Values::False => {
                                                 match condfalse.get_instructions() {
-                                                    Ok(ins) => self.execute(ins, env),
+                                                    Ok(ins) => self.execute(&ins, env),
                                                     Err(e) => {
                                                         self.next += 2;
                                                         return Err(e);
@@ -873,7 +873,7 @@ impl Stack {
                                             }
                                             Values::True => {
                                                 match condtrue.get_instructions() {
-                                                    Ok(ins) => self.execute(ins, env),
+                                                    Ok(ins) => self.execute(&ins, env),
                                                     Err(e) => {
                                                         self.next += 2;
                                                         return Err(e);
@@ -892,6 +892,32 @@ impl Stack {
                                     }
                                     Err(e) => Err(e)
                                 };
+                            }else if instr.eq("loop"){
+                                let opers = match self.pop() {
+                                    Ok(x) => match x.get_instructions(){
+                                        Ok(cont) => cont,
+                                        Err(e) => return Err(e)
+                                    },
+                                    Err(e) => return Err(e)
+                                };
+                                loop{
+                                    match self.execute(&opers, env){
+                                        Ok(_) => {}
+                                        Err(e) => return Err(e)
+                                    }
+                                    match self.pop() {
+                                        Ok(x) => match x{
+                                            StackElem::Value(val) => match val{
+                                                Values::True => continue,
+                                                Values::False => break,
+                                                _ => return Err(Errors::InvalidOperands)
+                                            }
+                                            _ => return Err(Errors::InvalidOperands)
+                                        }
+                                        Err(e) => return Err(e)
+                                    }
+                                }
+
                                 // Stack Operations
                             } else if instr.eq("quote") {
                                 let val = match self.pop() {
@@ -961,7 +987,7 @@ impl Stack {
                                         return Err(e);
                                     }
                                 };
-                                return self.execute(res, env)
+                                return self.execute(&res, env)
                             } else if instr.eq("clear") {
                                 self.next = 0;
                             } else if instr.eq("dig") {
@@ -1064,7 +1090,7 @@ impl Stack {
                             } else {
                                 return match env.get(instr) {
                                     None => Err(Errors::InvalidInstruction),
-                                    Some(body) => self.execute(body, env)
+                                    Some(body) => self.execute(&body, env)
                                 };
                             }
                             return Ok(())
@@ -1076,7 +1102,7 @@ impl Stack {
         Ok(())
     }
 
-    pub(crate) fn execute<T>(&mut self, program: String, env: &mut T) -> Result<(), Errors> where T: Environment{
+    pub(crate) fn execute<T>(&mut self, program: &String, env: &mut T) -> Result<(), Errors> where T: Environment{
         let mut instr = String::new();
         let mut quote: i32 = 0;
         for charact in program.chars() {

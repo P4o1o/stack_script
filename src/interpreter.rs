@@ -14,7 +14,7 @@ impl BaseInterpreter {
         }
     }
 
-    pub(crate) fn execute(&mut self, program: String) -> Result<(), Errors>{
+    pub(crate) fn execute(&mut self, program: &String) -> Result<(), Errors>{
         self.stack.execute::<BaseEnv>(program, &mut self.env)
     }
 }
@@ -34,7 +34,7 @@ impl ThreadSafeInterpreter {
         }
     }
 
-    pub(crate) fn execute(&mut self, program: String) -> Result<(), Errors> {
+    pub(crate) fn execute(&mut self, program: &String) -> Result<(), Errors> {
         let mut stack = self.stack.lock().unwrap();
         stack.execute::<ThreadSafeEnv>(program, &mut self.env)
     }

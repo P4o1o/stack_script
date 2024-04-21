@@ -66,3 +66,15 @@ After executing the `nop` operation, the stack remains unchanged:
 .. code-block:: text
 
     8
+
+**loop**
+~~~~~~~~~
+
+The `loop` operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops.
+
+Example:
+
+.. code-block:: text
+
+    1 [1 + dup 10 <] loop => 10
+

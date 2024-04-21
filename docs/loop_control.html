@@ -51,6 +51,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Loop Control</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#if"><strong>if</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#nop"><strong>nop</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#loop"><strong>loop</strong></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="input_output.html">Input/Output</a></li>
@@ -123,6 +124,14 @@ if
 </div>
 <p>After executing the <cite>nop</cite> operation, the stack remains unchanged:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>8
+</pre></div>
+</div>
+</section>
+<section id="loop">
+<h2><strong>loop</strong><a class="headerlink" href="#loop" title="Link to this heading"></a></h2>
+<p>The <cite>loop</cite> operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1 [1 + dup 10 &lt;] loop =&gt; 10
 </pre></div>
 </div>
 </section>

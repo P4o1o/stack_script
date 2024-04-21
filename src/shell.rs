@@ -9,7 +9,7 @@ pub fn base_shell(){
         io::stdout().flush().unwrap();
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
-        match stack.execute(input){
+        match stack.execute(&input){
             Ok(_) => {}
             Err(e) => match e {
                 Errors::StackUnderflow => println!("StackUnderflow"),
