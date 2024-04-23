@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
+use std::num::ParseIntError;
 use crate::environments::Environment;
 use std::ops::{Add, Div, Mul, Rem, Sub, BitAnd, BitOr, BitXor, Not};
 
-const INSTRUCTIONS: [&str; 30] = [
+pub(crate) const INSTRUCTIONS: [&str; 30] = [
     "last", "empty", "sizemax", "size",
     "pow", "sqrt",
     "true", "false",
@@ -13,9 +14,9 @@ const INSTRUCTIONS: [&str; 30] = [
     "define", "delete", "isdef"
 ];
 
-const STACK_SIZE: usize = 256;
+pub(crate) const STACK_SIZE: usize = 256;
 
-pub enum Errors {
+pub(crate) enum Errors {
     StackUnderflow,
     StackOverflow,
     InvalidOperands,
@@ -27,14 +28,14 @@ pub enum Errors {
     InvalidInstruction,
 }
 
-enum Values {
+pub(crate) enum Values {
     Float(f32),
     Int(i32),
     True,
     False
 }
 
-enum StackElem {
+pub(crate) enum StackElem {
     Instruction(String),
     Value(Values),
 }
@@ -356,6 +357,14 @@ impl Stack {
         Ok(())
     }
 
+    fn precise_swap(&mut self, from_first: usize) -> Result<(), Errors> {
+        if self.next < 1 + from_first {
+            return Err(Errors::StackUnderflow);
+        }
+        self.content.swap(self.next - 1 - from_first, self.next - 1);
+        Ok(())
+    }
+
     fn dig(&mut self, i: usize) -> Result<(), Errors> {
         if self.next <= i {
             return Err(Errors::StackUnderflow);
@@ -372,7 +381,7 @@ impl Stack {
         self.push(self.content[self.next - 1].clone())
     }
 
-    fn top(&mut self) -> Result<(), Errors> {
+    fn bottom(&mut self) -> Result<(), Errors> {
         if self.next == 0 {
             return Err(Errors::StackUnderflow)
         }
@@ -577,9 +586,9 @@ impl Stack {
                                 return self.push(StackElem::Value(Values::Int(self.next as i32)));
                             } else if instr.eq("maxsize") {
                                 return self.push(StackElem::Value(Values::Int(STACK_SIZE as i32)));
-                            } else if instr.eq("top") {
-                                return self.top();
-                            } else if instr.eq("last") {
+                            } else if instr.eq("bottom"){
+                                return self.bottom();
+                            } else if instr.eq("last"){
                                 return match self.next == STACK_SIZE - 1 {
                                     true => self.push(StackElem::Value(Values::True)),
                                     false => self.push(StackElem::Value(Values::False))
@@ -917,7 +926,34 @@ impl Stack {
                                         Err(e) => return Err(e)
                                     }
                                 }
-
+                            }else if instr.starts_with("loop(") && instr.ends_with(")"){
+                                let cond = &instr[5..instr.len() - 1];
+                                let opers = match self.pop() {
+                                    Ok(x) => match x.get_instructions(){
+                                        Ok(cont) => cont,
+                                        Err(e) => return Err(e)
+                                    },
+                                    Err(e) => return Err(e)
+                                };
+                                loop{
+                                    match self.execute(cond, env){
+                                        Ok(_) => match self.pop() {
+                                            Ok(x) => match x{
+                                                StackElem::Value(val) => match val{
+                                                    Values::True => match self.execute(&opers, env){
+                                                        Ok(_) => continue,
+                                                        Err(e) => return Err(e)
+                                                    },
+                                                    Values::False => break,
+                                                    _ => return Err(Errors::InvalidOperands)
+                                                }
+                                                _ => return Err(Errors::InvalidOperands)
+                                            }
+                                            Err(e) => return Err(e)
+                                        }
+                                        Err(e) => return Err(e)
+                                    }
+                                }
                                 // Stack Operations
                             } else if instr.eq("quote") {
                                 let val = match self.pop() {
@@ -940,15 +976,23 @@ impl Stack {
                                     }
                                 }
                             } else if instr.eq("dup") {
-                                match self.dup() {
-                                    Ok(_) => {}
-                                    Err(e) => return Err(e)
-                                }
+                                return self.dup()
+                            } else if instr.starts_with("dup") {
+                                let strindex = &instr[3..instr.len()];
+                                let index = match strindex.parse::<usize>(){
+                                    Ok(x) => x,
+                                    Err(_) => return Err(Errors::InvalidInstruction)
+                                };
+                                return self.dig(index)
                             } else if instr.eq("swap") {
-                                match self.swap() {
-                                    Ok(_) => {}
-                                    Err(e) => return Err(e)
-                                }
+                                return self.swap()
+                            }else if instr.starts_with("swap"){
+                                let strindex = &instr[4..instr.len()];
+                                let index = match strindex.parse::<usize>(){
+                                    Ok(x) => if x == 0 {return Err(Errors::InvalidInstruction)} else {x},
+                                    Err(_) => return Err(Errors::InvalidInstruction)
+                                };
+                                return self.precise_swap(index)
                             } else if instr.eq("compose") {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
@@ -990,25 +1034,6 @@ impl Stack {
                                 return self.execute(&res, env)
                             } else if instr.eq("clear") {
                                 self.next = 0;
-                            } else if instr.eq("dig") {
-                                let dival = match self.pop() {
-                                    Ok(val) => match val {
-                                        StackElem::Instruction(_) => return Err(Errors::InvalidOperands),
-                                        StackElem::Value(a) => match a {
-                                            Values::Float(x) => x as usize,
-                                            Values::Int(x) => x as usize,
-                                            _ => return Err(Errors::InvalidOperands)
-                                        }
-                                    }
-                                    Err(e) => return Err(e)
-                                };
-                                match self.dig(dival) {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        self.next += 1;
-                                        return Err(e);
-                                    }
-                                }
                             } else if instr.eq("drop") {
                                 match self.pop() {
                                     Ok(_) => {}
@@ -1054,7 +1079,7 @@ impl Stack {
                                 // Keywords
                             } else if instr.starts_with("define(") && instr.ends_with(")") {
                                 let name = &instr[7..instr.len() - 1];
-                                match correct_define_name(name) {
+                                match correct_define_name(name.trim()) {
                                     true => {
                                         let body = match self.pop() {
                                             Ok(val) => {
@@ -1102,9 +1127,10 @@ impl Stack {
         Ok(())
     }
 
-    pub(crate) fn execute<T>(&mut self, program: &String, env: &mut T) -> Result<(), Errors> where T: Environment{
+    pub(crate) fn execute<T>(&mut self, program: &str, env: &mut T) -> Result<(), Errors> where T: Environment{
         let mut instr = String::new();
         let mut quote: i32 = 0;
+        let mut roundpar: i32 = 0;
         for charact in program.chars() {
             match charact {
                 ']' => {
@@ -1115,25 +1141,34 @@ impl Stack {
                     quote += 1;
                     instr.push(charact);
                 },
-                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '(' | ')' | '<' | '>' => instr.push(charact),
+                '(' => {
+                    roundpar += 1;
+                    instr.push(charact);
+                }
+                ')' => {
+                    roundpar -= 1;
+                    instr.push(charact);
+                }
+                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '<' | '>' => instr.push(charact),
                 ' ' | '\n' | '\t' | '\r' => {
-                    match quote {
-                        0 => {
+                    match (quote, roundpar) {
+                        (0, 0) => {
                             match self.execute_instruction(&instr, env) {
                                 Ok(_) => {}
                                 Err(e) => return Err(e)
                             };
                             instr.clear();
                         }
-                        1..=i32::MAX => instr.push(charact),
+                        (1..=i32::MAX, _) => instr.push(charact),
+                        (_, 1..=i32::MAX) => instr.push(charact),
                         _ => return Err(Errors::ParenthesisError)
                     };
                 }
                 _ => return Err(Errors::InvalidCharacter)
             };
         }
-        match quote {
-            0 => {
+        match (quote, roundpar) {
+            (0, 0) => {
                 self.execute_instruction(&instr, env)
             }
             _ => return Err(Errors::ParenthesisError)

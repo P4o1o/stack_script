@@ -50,10 +50,9 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Stack Operations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#pushing-instructions"><strong>Pushing Instructions</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#drop"><strong>drop</strong></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#dig"><strong>dig</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dup"><strong>dup</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#swap"><strong>swap</strong></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#top"><strong>top</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bottom"><strong>bottom</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#compose"><strong>compose</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#apply"><strong>apply</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#quote"><strong>quote</strong></a></li>
@@ -104,35 +103,31 @@
 </pre></div>
 </div>
 </section>
-<section id="dig">
-<h2><strong>dig</strong><a class="headerlink" href="#dig" title="Link to this heading"></a></h2>
-<p>The <cite>dig</cite> operation pops a number from the stack and then digs that number deep into the stack. If the stack is deep enough, it replaces the top value with the value found at the specified depth(it starts from 0).</p>
-<p>Example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 3 2 4 3 dig =&gt; 5 3 2 4 5
-</pre></div>
-</div>
-</section>
 <section id="dup">
 <h2><strong>dup</strong><a class="headerlink" href="#dup" title="Link to this heading"></a></h2>
-<p>The <cite>dup</cite> operation duplicates the top value on the stack and pushes the duplicate onto the stack.</p>
+<p>The <cite>dup</cite> operation (usage: dup or dup0, dup1, dup2, …) duplicates a value on the stack and pushes the duplicate onto the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 dup =&gt; 4 4
+5 3 2 4 dup3 =&gt; 5 3 2 4 5
 </pre></div>
 </div>
 </section>
 <section id="swap">
 <h2><strong>swap</strong><a class="headerlink" href="#swap" title="Link to this heading"></a></h2>
-<p>The <cite>swap</cite> operation swaps the positions of the top two values on the stack.</p>
+<p>The <cite>swap</cite> operation (usage same as dup: swap or swap1, swap2, swap3 …) swaps the positions of the top two values on the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 3 swap =&gt; 3 5
+
+7 2 4 3 22 swap4 =&gt; 22 2 4 3 7
 </pre></div>
 </div>
+<p>Is possible to swap another value with</p>
 </section>
-<section id="top">
-<h2><strong>top</strong><a class="headerlink" href="#top" title="Link to this heading"></a></h2>
-<p>The <cite>top</cite> operation duplicates the top value on the stack and pushes it onto the stack without removing the original.</p>
+<section id="bottom">
+<h2><strong>bottom</strong><a class="headerlink" href="#bottom" title="Link to this heading"></a></h2>
+<p>The <cite>bottom</cite> operation duplicates the top value on the stack and pushes it onto the stack without removing the original.</p>
 <p>Example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 5 7 3 2 1 top =&gt; 4
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 5 7 3 2 1 bottom =&gt; 4 5 7 3 2 1 4
 </pre></div>
 </div>
 </section>

@@ -70,7 +70,7 @@ After executing the `nop` operation, the stack remains unchanged:
 **loop**
 ~~~~~~~~~
 
-The `loop` operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops.
+The `loop` operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops. You can think of it as a while-do loop
 
 Example:
 
@@ -78,3 +78,12 @@ Example:
 
     1 [1 + dup 10 <] loop => 10
 
+The loop can be perform also with '[instructions] loop(condition)' but in this way it executes the condition expression first. You can think of it as a while loop
+
+Example:
+
+.. code-block:: text
+
+    0 [0 swap] loop(1 + dup 3 <) => 0 0 3
+
+    0 [0 swap 1 + dup 3 <] loop => 0 0 0 3

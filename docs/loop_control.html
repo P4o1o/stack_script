@@ -129,9 +129,16 @@ if
 </section>
 <section id="loop">
 <h2><strong>loop</strong><a class="headerlink" href="#loop" title="Link to this heading"></a></h2>
-<p>The <cite>loop</cite> operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops.</p>
+<p>The <cite>loop</cite> operation execute the first instruction on the stack, then it will pop a value that must be boolean, and if it is true it will execute the instruction again, if it is false the loop stops. You can think of it as a while-do loop</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1 [1 + dup 10 &lt;] loop =&gt; 10
+</pre></div>
+</div>
+<p>The loop can be perform also with ‘[instructions] loop(condition)’ but in this way it executes the condition expression first. You can think of it as a while loop</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>0 [0 swap] loop(1 + dup 3 &lt;) =&gt; 0 0 3
+
+0 [0 swap 1 + dup 3 &lt;] loop =&gt; 0 0 0 3
 </pre></div>
 </div>
 </section>

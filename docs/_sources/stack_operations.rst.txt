@@ -18,32 +18,23 @@ Example:
 
     5 3 drop => 5
 
-**dig**
-~~~~~~~
-
-The `dig` operation pops a number from the stack and then digs that number deep into the stack. If the stack is deep enough, it replaces the top value with the value found at the specified depth(it starts from 0).
-
-Example:
-
-.. code-block:: text
-
-    5 3 2 4 3 dig => 5 3 2 4 5
 
 **dup**
 ~~~~~~~
 
-The `dup` operation duplicates the top value on the stack and pushes the duplicate onto the stack.
+The `dup` operation (usage: dup or dup0, dup1, dup2, ...) duplicates a value on the stack and pushes the duplicate onto the stack.
 
 Example:
 
 .. code-block:: text
 
     4 dup => 4 4
+    5 3 2 4 dup3 => 5 3 2 4 5
 
 **swap**
 ~~~~~~~~
 
-The `swap` operation swaps the positions of the top two values on the stack.
+The `swap` operation (usage same as dup: swap or swap1, swap2, swap3 ...) swaps the positions of the top two values on the stack.
 
 Example:
 
@@ -51,16 +42,20 @@ Example:
 
     5 3 swap => 3 5
 
-**top**
-~~~~~~~
+    7 2 4 3 22 swap4 => 22 2 4 3 7
 
-The `top` operation duplicates the top value on the stack and pushes it onto the stack without removing the original.
+Is possible to swap another value with
+
+**bottom**
+~~~~~~~~~~
+
+The `bottom` operation duplicates the top value on the stack and pushes it onto the stack without removing the original.
 
 Example:
 
 .. code-block:: text
 
-    4 5 7 3 2 1 top => 4
+    4 5 7 3 2 1 bottom => 4 5 7 3 2 1 4
 
 **compose**
 ~~~~~~~~~~~

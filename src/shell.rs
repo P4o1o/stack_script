@@ -5,7 +5,7 @@ use crate::interpreter::BaseInterpreter;
 pub fn base_shell(){
     let mut stack = BaseInterpreter::new();
     loop{
-        print!("> ");
+        print!("> "); 
         io::stdout().flush().unwrap();
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
