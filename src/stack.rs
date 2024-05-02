@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::cmp::{Ordering, PartialEq};
 use std::num::ParseIntError;
 use crate::environments::Environment;
 use std::ops::{Add, Div, Mul, Rem, Sub, BitAnd, BitOr, BitXor, Not};
@@ -868,6 +868,59 @@ impl Stack {
                                         return Err(e);
                                     }
                                 };
+                                return match self.pop() {
+                                    Ok(x) => match x {
+                                        StackElem::Value(x) => match x {
+                                            Values::False => {
+                                                match condfalse.get_instructions() {
+                                                    Ok(ins) => self.execute(&ins, env),
+                                                    Err(e) => {
+                                                        self.next += 2;
+                                                        return Err(e);
+                                                    }
+                                                }
+                                            }
+                                            Values::True => {
+                                                match condtrue.get_instructions() {
+                                                    Ok(ins) => self.execute(&ins, env),
+                                                    Err(e) => {
+                                                        self.next += 2;
+                                                        return Err(e);
+                                                    }
+                                                }
+                                            }
+                                            _ => {
+                                                self.next += 2;
+                                                Err(Errors::InvalidOperands)
+                                            }
+                                        }
+                                        _ => {
+                                            self.next += 2;
+                                            Err(Errors::InvalidOperands)
+                                        }
+                                    }
+                                    Err(e) => Err(e)
+                                };
+                            }else if instr.starts_with("if(") {
+                                let cond = &instr[3..instr.len() - 1];
+                                let condfalse = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => return Err(e)
+                                };
+                                let condtrue = match self.pop() {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        self.next += 1;
+                                        return Err(e);
+                                    }
+                                };
+                                match self.execute(cond, env){
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        self.next += 2;
+                                        return Err(e);
+                                    }
+                                }
                                 return match self.pop() {
                                     Ok(x) => match x {
                                         StackElem::Value(x) => match x {
