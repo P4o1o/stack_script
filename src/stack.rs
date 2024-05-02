@@ -1,7 +1,17 @@
-use std::cmp::{Ordering, PartialEq};
-use std::num::ParseIntError;
+use std::borrow::ToOwned;
+use std::clone::Clone;
+use std::cmp::{Ordering, PartialEq, PartialOrd};
+use std::convert::Into;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::iter::Iterator;
 use crate::environments::Environment;
-use std::ops::{Add, Div, Mul, Rem, Sub, BitAnd, BitOr, BitXor, Not};
+use std::ops::{Add, Div, Mul, Rem, Sub, BitAnd, BitOr, BitXor, Not, Fn};
+use std::option::Option;
+use std::option::Option::{Some, None};
+use std::result::Result;
+use std::result::Result::{Ok, Err};
+use std::string::{String, ToString};
 
 pub(crate) const INSTRUCTIONS: [&str; 30] = [
     "last", "empty", "sizemax", "size",
@@ -19,13 +29,16 @@ pub(crate) const STACK_SIZE: usize = 256;
 pub(crate) enum Errors {
     StackUnderflow,
     StackOverflow,
-    InvalidOperands,
-    InvalidCharacter,
+    InvalidOperands(String),
+    InvalidCharacter(char),
     ParenthesisError,
     ExecutionEnd,
     ZeroDivision,
-    DefineInvalidName,
-    InvalidInstruction,
+    DefineInvalidName(String),
+    InvalidInstruction(String),
+    FileNotExists(String),
+    IOError(String),
+    FileNotCreatable(String),
 }
 
 pub(crate) enum Values {
@@ -45,17 +58,17 @@ pub(crate) struct Stack {
     next: usize,
 }
 
-fn match_maths_type<T, S>(x: &StackElem, y: &StackElem, func_int: T, func_float: S) -> Result<StackElem, Errors>
+fn match_maths_type<T, S>(x: &StackElem, y: &StackElem, func_int: T, func_float: S) -> Option<StackElem>
     where T: Fn(i32, i32) -> i32, S: Fn(f32, f32) -> f32 {
     match (x, y) {
         (StackElem::Value(a), StackElem::Value(b)) => match (a, b) {
-            (Values::Int(x), Values::Int(y)) => Ok(StackElem::Value(Values::Int(func_int(*x, *y)))),
-            (Values::Int(x), Values::Float(y)) => Ok(StackElem::Value(Values::Float(func_float(*x as f32, *y)))),
-            (Values::Float(x), Values::Int(y)) => Ok(StackElem::Value(Values::Float(func_float(*x, *y as f32)))),
-            (Values::Float(x), Values::Float(y)) => Ok(StackElem::Value(Values::Float(func_float(*x, *y)))),
-            _ => Err(Errors::InvalidOperands)
+            (Values::Int(x), Values::Int(y)) => Some(StackElem::Value(Values::Int(func_int(*x, *y)))),
+            (Values::Int(x), Values::Float(y)) => Some(StackElem::Value(Values::Float(func_float(*x as f32, *y)))),
+            (Values::Float(x), Values::Int(y)) => Some(StackElem::Value(Values::Float(func_float(*x, *y as f32)))),
+            (Values::Float(x), Values::Float(y)) => Some(StackElem::Value(Values::Float(func_float(*x, *y)))),
+            _ => None
         },
-        _ => Err(Errors::InvalidOperands),
+        _ => None,
     }
 }
 
@@ -87,7 +100,10 @@ impl Add for StackElem {
     type Output = Result<StackElem, Errors>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        match_maths_type(&self, &rhs, |a, b| a + b, |x, y| x + y)
+        match match_maths_type(&self, &rhs, |a, b| a + b, |x, y| x + y){
+            None => Err(Errors::InvalidOperands("+".to_string())),
+            Some(x) => Ok(x)
+        }
     }
 }
 
@@ -95,7 +111,10 @@ impl Sub for StackElem {
     type Output = Result<StackElem, Errors>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        match_maths_type(&self, &rhs, |a, b| a - b, |x, y| x - y)
+        match match_maths_type(&self, &rhs, |a, b| a - b, |x, y| x - y){
+            None => Err(Errors::InvalidOperands("-".to_string())),
+            Some(x) => Ok(x)
+        }
     }
 }
 
@@ -103,7 +122,10 @@ impl Mul for StackElem {
     type Output = Result<StackElem, Errors>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        match_maths_type(&self, &rhs, |a, b| a * b, |x, y| x * y)
+        match match_maths_type(&self, &rhs, |a, b| a * b, |x, y| x * y){
+            None => Err(Errors::InvalidOperands("*".to_string())),
+            Some(x) => Ok(x)
+        }
     }
 }
 
@@ -119,11 +141,14 @@ impl Div for StackElem {
                 Values::Int(a) => if *a == 0 {
                     return Err(Errors::ZeroDivision);
                 },
-                _ => return Err(Errors::InvalidOperands)
+                _ => return Err(Errors::InvalidOperands("/".to_string()))
             },
-            _ => return Err(Errors::InvalidOperands)
+            _ => return Err(Errors::InvalidOperands("/".to_string()))
         };
-        match_maths_type(&self, &rhs, |a, b| a / b, |x, y| x / y)
+        match match_maths_type(&self, &rhs, |a, b| a / b, |x, y| x / y){
+            None => Err(Errors::InvalidOperands("/".to_string())),
+            Some(x) => Ok(x)
+        }
     }
 }
 
@@ -137,9 +162,9 @@ impl Rem for StackElem {
                     0 => Err(Errors::ZeroDivision),
                     _ => Ok(StackElem::Value(Values::Int(x % y)))
                 },
-                _ => Err(Errors::InvalidOperands),
+                _ => Err(Errors::InvalidOperands("%".to_string())),
             },
-            (_, _) => Err(Errors::InvalidOperands),
+            (_, _) => Err(Errors::InvalidOperands("%".to_string())),
         }
     }
 }
@@ -152,9 +177,9 @@ impl Not for StackElem {
             StackElem::Value(a) => match a {
                 Values::True => Ok(StackElem::Value(Values::False)),
                 Values::False => Ok(StackElem::Value(Values::True)),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("not".to_string()))
             }
-            _ => Err(Errors::InvalidOperands)
+            _ => Err(Errors::InvalidOperands("not".to_string()))
         }
     }
 }
@@ -169,9 +194,9 @@ impl BitAnd for StackElem{
                 (Values::False, Values::True) => Ok(StackElem::Value(Values::False)),
                 (Values::True, Values::False) => Ok(StackElem::Value(Values::False)),
                 (Values::False, Values::False) => Ok(StackElem::Value(Values::False)),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("and".to_string()))
             }
-            _ => Err(Errors::InvalidOperands)
+            _ => Err(Errors::InvalidOperands("and".to_string()))
         }
     }
 }
@@ -186,9 +211,9 @@ impl BitOr for StackElem{
                 (Values::False, Values::True) => Ok(StackElem::Value(Values::True)),
                 (Values::True, Values::False) => Ok(StackElem::Value(Values::True)),
                 (Values::False, Values::False) => Ok(StackElem::Value(Values::False)),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("or".to_string()))
             }
-            _ => Err(Errors::InvalidOperands)
+            _ => Err(Errors::InvalidOperands("or".to_string()))
         }
     }
 }
@@ -203,9 +228,9 @@ impl BitXor for StackElem{
                 (Values::False, Values::True) => Ok(StackElem::Value(Values::True)),
                 (Values::True, Values::False) => Ok(StackElem::Value(Values::True)),
                 (Values::False, Values::False) => Ok(StackElem::Value(Values::False)),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("xor".to_string()))
             }
-            _ => Err(Errors::InvalidOperands)
+            _ => Err(Errors::InvalidOperands("xor".to_string()))
         }
     }
 }
@@ -258,16 +283,16 @@ impl StackElem {
             (StackElem::Value(a), StackElem::Value(b)) => match (a, b) {
                 (Values::Int(x), Values::Int(y)) => {
                     if y < 0 {
-                        return Err(Errors::InvalidOperands);
+                        return Err(Errors::InvalidOperands("pow".to_string()));
                     }
                     Ok(StackElem::Value(Values::Int(x.pow(y as u32))))
                 },
                 (Values::Int(x), Values::Float(y)) => Ok(StackElem::Value(Values::Float((x as f32).powf(y)))),
                 (Values::Float(x), Values::Int(y)) => Ok(StackElem::Value(Values::Float(x.powf(y as f32)))),
                 (Values::Float(x), Values::Float(y)) => Ok(StackElem::Value(Values::Float(x.powf(y)))),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("pow".to_string()))
             },
-            _ => Err(Errors::InvalidOperands),
+            _ => Err(Errors::InvalidOperands("pow".to_string())),
         }
     }
     fn sqrt(self) -> Result<StackElem, Errors> {
@@ -275,16 +300,42 @@ impl StackElem {
             StackElem::Value(a) => match a {
                 Values::Float(x) => Ok(StackElem::Value(Values::Float(x.sqrt()))),
                 Values::Int(x) => Ok(StackElem::Value(Values::Float((x as f32).sqrt()))),
-                _ => Err(Errors::InvalidOperands)
+                _ => Err(Errors::InvalidOperands("sqrt".to_string()))
             },
-            _ => Err(Errors::InvalidOperands),
+            _ => Err(Errors::InvalidOperands("sqrt".to_string())),
         }
     }
 
-    fn get_instructions(self) -> Result<String, Errors> {
+    fn get_instructions(self) -> Option<String> {
         match self {
-            StackElem::Instruction(a) => Ok(a[1..a.len() - 1].to_owned()),
-            _ => Err(Errors::InvalidOperands)
+            StackElem::Instruction(a) => Some(a[1..a.len() - 1].to_owned()),
+            _ => None
+        }
+    }
+
+    fn to_string(&self) -> String {
+        match self {
+            StackElem::Instruction(a) => (*a).clone(),
+            StackElem::Value(a) => match a {
+                Values::Float(x) => x.to_string(),
+                Values::Int(x) => x.to_string(),
+                Values::True => "true".to_string(),
+                Values::False => "false".to_string(),
+            }
+        }
+    }
+
+    fn from_string(instr: &String) -> Option<StackElem>{
+        if instr.starts_with('[') {
+            return Some(StackElem::Instruction(instr.clone()))
+        } else {
+            return match instr.parse::<i32>() {
+                Ok(i) => Some(StackElem::Value(Values::Int(i))),
+                Err(_) => match instr.parse::<f32>() {
+                    Ok(f) => Some(StackElem::Value(Values::Float(f))),
+                    Err(_) => None
+                }
+            }
         }
     }
 
@@ -293,7 +344,7 @@ impl StackElem {
             (StackElem::Instruction(a), StackElem::Instruction(b)) => {
                 Ok(StackElem::Instruction(a[0..a.len() - 1].to_owned() + " " + &b[1..b.len()]))
             }
-            _ => Err(Errors::InvalidOperands)
+            _ => Err(Errors::InvalidOperands("compose".to_string()))
         }
     }
 
@@ -765,7 +816,7 @@ impl Stack {
                                     Some(x) => x == Ordering::Greater,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands);
+                                        return Err(Errors::InvalidOperands(">".to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
@@ -791,7 +842,7 @@ impl Stack {
                                     Some(x) => x == Ordering::Greater || x == Ordering::Equal,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands);
+                                        return Err(Errors::InvalidOperands(">=".to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
@@ -817,7 +868,7 @@ impl Stack {
                                     Some(x) => x == Ordering::Less,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands);
+                                        return Err(Errors::InvalidOperands("<".to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
@@ -843,7 +894,7 @@ impl Stack {
                                     Some(x) => x == Ordering::Less || x == Ordering::Equal,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands);
+                                        return Err(Errors::InvalidOperands("<=".to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
@@ -873,30 +924,30 @@ impl Stack {
                                         StackElem::Value(x) => match x {
                                             Values::False => {
                                                 match condfalse.get_instructions() {
-                                                    Ok(ins) => self.execute(&ins, env),
-                                                    Err(e) => {
+                                                    Some(ins) => self.execute(&ins, env),
+                                                    None => {
                                                         self.next += 2;
-                                                        return Err(e);
+                                                        return Err(Errors::InvalidOperands("if".to_string()));
                                                     }
                                                 }
                                             }
                                             Values::True => {
                                                 match condtrue.get_instructions() {
-                                                    Ok(ins) => self.execute(&ins, env),
-                                                    Err(e) => {
+                                                    Some(ins) => self.execute(&ins, env),
+                                                    None => {
                                                         self.next += 2;
-                                                        return Err(e);
+                                                        return Err(Errors::InvalidOperands("if".to_string()));
                                                     }
                                                 }
                                             }
                                             _ => {
                                                 self.next += 2;
-                                                Err(Errors::InvalidOperands)
+                                                Err(Errors::InvalidOperands("if".to_string()))
                                             }
                                         }
                                         _ => {
                                             self.next += 2;
-                                            Err(Errors::InvalidOperands)
+                                            Err(Errors::InvalidOperands("if".to_string()))
                                         }
                                     }
                                     Err(e) => Err(e)
@@ -926,30 +977,30 @@ impl Stack {
                                         StackElem::Value(x) => match x {
                                             Values::False => {
                                                 match condfalse.get_instructions() {
-                                                    Ok(ins) => self.execute(&ins, env),
-                                                    Err(e) => {
+                                                    Some(ins) => self.execute(&ins, env),
+                                                    None => {
                                                         self.next += 2;
-                                                        return Err(e);
+                                                        return Err(Errors::InvalidOperands(instr.clone()));
                                                     }
                                                 }
                                             }
                                             Values::True => {
                                                 match condtrue.get_instructions() {
-                                                    Ok(ins) => self.execute(&ins, env),
-                                                    Err(e) => {
+                                                    Some(ins) => self.execute(&ins, env),
+                                                    None => {
                                                         self.next += 2;
-                                                        return Err(e);
+                                                        return Err(Errors::InvalidOperands(instr.clone()));
                                                     }
                                                 }
                                             }
                                             _ => {
                                                 self.next += 2;
-                                                Err(Errors::InvalidOperands)
+                                                Err(Errors::InvalidOperands(instr.clone()))
                                             }
                                         }
                                         _ => {
                                             self.next += 2;
-                                            Err(Errors::InvalidOperands)
+                                            Err(Errors::InvalidOperands(instr.clone()))
                                         }
                                     }
                                     Err(e) => Err(e)
@@ -957,8 +1008,8 @@ impl Stack {
                             }else if instr.eq("loop"){
                                 let opers = match self.pop() {
                                     Ok(x) => match x.get_instructions(){
-                                        Ok(cont) => cont,
-                                        Err(e) => return Err(e)
+                                        Some(cont) => cont,
+                                        None => return Err(Errors::InvalidOperands("loop".to_string()))
                                     },
                                     Err(e) => return Err(e)
                                 };
@@ -972,9 +1023,9 @@ impl Stack {
                                             StackElem::Value(val) => match val{
                                                 Values::True => continue,
                                                 Values::False => break,
-                                                _ => return Err(Errors::InvalidOperands)
+                                                _ => return Err(Errors::InvalidOperands("loop".to_string()))
                                             }
-                                            _ => return Err(Errors::InvalidOperands)
+                                            _ => return Err(Errors::InvalidOperands("loop".to_string()))
                                         }
                                         Err(e) => return Err(e)
                                     }
@@ -983,8 +1034,8 @@ impl Stack {
                                 let cond = &instr[5..instr.len() - 1];
                                 let opers = match self.pop() {
                                     Ok(x) => match x.get_instructions(){
-                                        Ok(cont) => cont,
-                                        Err(e) => return Err(e)
+                                        Some(cont) => cont,
+                                        None => return Err(Errors::InvalidOperands(instr.clone()))
                                     },
                                     Err(e) => return Err(e)
                                 };
@@ -998,9 +1049,9 @@ impl Stack {
                                                         Err(e) => return Err(e)
                                                     },
                                                     Values::False => break,
-                                                    _ => return Err(Errors::InvalidOperands)
+                                                    _ => return Err(Errors::InvalidOperands(instr.clone()))
                                                 }
-                                                _ => return Err(Errors::InvalidOperands)
+                                                _ => return Err(Errors::InvalidOperands(instr.clone()))
                                             }
                                             Err(e) => return Err(e)
                                         }
@@ -1038,9 +1089,9 @@ impl Stack {
                                             StackElem::Value(val) => match val{
                                                 Values::Int(x) => x as usize,
                                                 Values::Float(x) => x as usize,
-                                                _ => return Err(Errors::InvalidOperands)
+                                                _ => return Err(Errors::InvalidOperands(instr.clone()))
                                             }
-                                            _ => return Err(Errors::InvalidOperands)
+                                            _ => return Err(Errors::InvalidOperands(instr.clone()))
                                         }
                                         Err(e) => return Err(e)
                                     }
@@ -1051,7 +1102,7 @@ impl Stack {
                                 let strindex = &instr[3..instr.len()];
                                 let index = match strindex.parse::<usize>(){
                                     Ok(x) => x,
-                                    Err(_) => return Err(Errors::InvalidInstruction)
+                                    Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
                                 };
                                 return self.dig(index)
                             } else if instr.eq("swap") {
@@ -1064,9 +1115,9 @@ impl Stack {
                                             StackElem::Value(val) => match val{
                                                 Values::Int(x) => x as usize,
                                                 Values::Float(x) => x as usize,
-                                                _ => return Err(Errors::InvalidOperands)
+                                                _ => return Err(Errors::InvalidOperands(instr.clone()))
                                             }
-                                            _ => return Err(Errors::InvalidOperands)
+                                            _ => return Err(Errors::InvalidOperands(instr.clone()))
                                         }
                                         Err(e) => return Err(e)
                                     }
@@ -1076,8 +1127,8 @@ impl Stack {
                             }else if instr.starts_with("swap"){
                                 let strindex = &instr[4..instr.len()];
                                 let index = match strindex.parse::<usize>(){
-                                    Ok(x) => if x == 0 {return Err(Errors::InvalidOperands)} else {x},
-                                    Err(_) => return Err(Errors::InvalidInstruction)
+                                    Ok(x) => if x == 0 {return Ok(())} else {x},
+                                    Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
                                 };
                                 return self.precise_swap(index)
                             } else if instr.eq("compose") {
@@ -1112,10 +1163,10 @@ impl Stack {
                                     Err(e) => return Err(e)
                                 };
                                 let res = match arg0.get_instructions() {
-                                    Ok(x) => x,
-                                    Err(e) => {
+                                    Some(x) => x,
+                                    None => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(Errors::InvalidOperands("apply".to_string()));
                                     }
                                 };
                                 return self.execute(&res, env)
@@ -1132,11 +1183,11 @@ impl Stack {
                             } else if instr.eq("int") {
                                 let val = match self.pop() {
                                     Ok(a) => match a {
-                                        StackElem::Instruction(_) => return Err(Errors::InvalidOperands),
+                                        StackElem::Instruction(_) => return Err(Errors::InvalidOperands("int".to_string())),
                                         StackElem::Value(x) => match x {
                                             Values::Float(v) => StackElem::Value(Values::Int(v as i32)),
                                             Values::Int(_) => return Ok(()),
-                                            _ => return Err(Errors::InvalidOperands)
+                                            _ => return Err(Errors::InvalidOperands("int".to_string()))
                                         }
                                     },
                                     Err(e) => return Err(e)
@@ -1146,6 +1197,33 @@ impl Stack {
                                     Err(e) => {
                                         self.next += 1;
                                         return Err(e);
+                                    }
+                                }
+                            } else if instr.starts_with("load("){
+                                let path = &instr[5..instr.len() - 1];
+                                let mut file = match File::open(path){
+                                    Ok(x) => x,
+                                    Err(_) => return Err(Errors::FileNotExists(path.to_string()))
+                                };
+                                let mut cont = String::new();
+                                match file.read_to_string(&mut cont){
+                                        Ok(_) => {}
+                                        Err(_) => return Err(Errors::IOError(path.to_string()))
+                                    }
+                                return self.execute(&cont, env)
+                            }else if instr.starts_with("save("){
+                                let path = &instr[5..instr.len() - 1];
+                                let mut file = match OpenOptions::new()
+                                    .create(true)
+                                    .append(true)
+                                    .open(path){
+                                    Ok(x) => x,
+                                    Err(_) => return Err(Errors::FileNotCreatable(path.to_string()))
+                                };
+                                for i in 0..self.next {
+                                    match file.write_all(&(self.content[i].to_string() + " ").into_bytes()){
+                                        Ok(_) => {}
+                                        Err(_) => return Err(Errors::IOError(path.to_string()))
                                     }
                                 }
                             } else if instr.eq("print") {
@@ -1171,15 +1249,15 @@ impl Stack {
                                         let body = match self.pop() {
                                             Ok(val) => {
                                                 match val.get_instructions() {
-                                                    Ok(a) => a,
-                                                    Err(e) => return Err(e)
+                                                    Some(a) => a,
+                                                    None => return Err(Errors::InvalidOperands(instr.clone()))
                                                 }
                                             }
                                             Err(e) => return Err(e)
                                         };
                                         env.set(name, body);
                                     }
-                                    false => return Err(Errors::DefineInvalidName)
+                                    false => return Err(Errors::DefineInvalidName(name.to_string()))
                                 }
                             } else if instr.starts_with("isdef(") && instr.ends_with(")") {
                                 let name = &instr[6..instr.len() - 1];
@@ -1191,17 +1269,17 @@ impl Stack {
                                         };
                                         return self.push(val);
                                     }
-                                    false => return Err(Errors::DefineInvalidName)
+                                    false => return Err(Errors::DefineInvalidName(name.to_string()))
                                 }
                             } else if instr.starts_with("delete(") && instr.ends_with(")") {
                                 let name = &instr[7..instr.len() - 1];
                                 match correct_define_name(name) {
                                     true => env.remove(name),
-                                    false => return Err(Errors::DefineInvalidName)
+                                    false => return Err(Errors::DefineInvalidName(name.to_string()))
                                 }
                             } else {
                                 return match env.get(instr) {
-                                    None => Err(Errors::InvalidInstruction),
+                                    None => Err(Errors::InvalidInstruction(instr.clone())),
                                     Some(body) => self.execute(&body, env)
                                 };
                             }
@@ -1236,7 +1314,7 @@ impl Stack {
                     roundpar -= 1;
                     instr.push(charact);
                 }
-                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '<' | '>' => instr.push(charact),
+                'a'..='z' | 'A'..='Z' | '+' | '-' | '*' | '/' | '%' | '0'..='9' | '.' | '=' | '!' | '<' | '>' | '\\' => instr.push(charact),
                 ' ' | '\n' | '\t' | '\r' => {
                     match (quote, roundpar) {
                         (0, 0) => {
@@ -1251,7 +1329,7 @@ impl Stack {
                         _ => return Err(Errors::ParenthesisError)
                     };
                 }
-                _ => return Err(Errors::InvalidCharacter)
+                x => return Err(Errors::InvalidCharacter(x))
             };
         }
         match (quote, roundpar) {

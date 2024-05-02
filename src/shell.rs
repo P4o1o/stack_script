@@ -14,13 +14,16 @@ pub fn base_shell(){
             Err(e) => match e {
                 Errors::StackUnderflow => println!("StackUnderflow"),
                 Errors::StackOverflow => println!("StackOverflow"),
-                Errors::InvalidOperands => println!("InvalidOperation"),
-                Errors::InvalidCharacter => println!("InvalidCharacter"),
+                Errors::InvalidOperands(_) => println!("InvalidOperation"),
+                Errors::InvalidCharacter(_) => println!("InvalidCharacter"),
                 Errors::ParenthesisError => println!("ParenthesisError"),
                 Errors::ExecutionEnd => { println!("Program end"); break; },
                 Errors::ZeroDivision => println!("ZeroDivision"),
-                Errors::DefineInvalidName => println!("DefineInvalidName"),
-                Errors::InvalidInstruction => println!("InvalidInstruction"),
+                Errors::DefineInvalidName(_) => println!("DefineInvalidName"),
+                Errors::InvalidInstruction(_) => println!("InvalidInstruction"),
+                Errors::FileNotExists(_) => println!("FileNotExists"),
+                Errors::IOError(_) => println!("IOError"),
+                Errors::FileNotCreatable(_) => println!("FileNotCreatable"),
             }
         };
     }
