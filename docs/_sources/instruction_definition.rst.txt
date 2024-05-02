@@ -28,6 +28,13 @@ When calling `add_and_double`, it will execute the instructions `[+ dup *]` as a
 
     3 4 add_and_double => 49
 
+A more useful example can be a procedure to calculate the mean of all the values in the stack (NOTE: in the stack will remain only the value of the mean):
+
+.. code-block:: text
+
+    [size swap(size 1 -) [+] loop(size 2 == not) swap /] define(mean)
+
+    3.0 2.1 6.7 8.9 2.4 5.6 10.1 1.7 mean => 5.0624995
 
 **delete**
 ~~~~~~~~~~
@@ -73,4 +80,4 @@ Suppose we want to check if the instruction "add_and_double" is defined:
 
     isdef(add_and_double)
 
-This will return `true` if "add_and_double" is defined, and `false` otherwise.
+This will push `true` if "add_and_double" is defined, and `false` otherwise.

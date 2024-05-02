@@ -100,6 +100,12 @@
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>3 4 add_and_double =&gt; 49
 </pre></div>
 </div>
+<p>A more useful example can be a procedure to calculate the mean of all the values in the stack (NOTE: in the stack will remain only the value of the mean):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[size swap(size 1 -) [+] loop(size 2 == not) swap /] define(mean)
+
+3.0 2.1 6.7 8.9 2.4 5.6 10.1 1.7 mean =&gt; 5.0624995
+</pre></div>
+</div>
 </section>
 <section id="delete">
 <h2><strong>delete</strong><a class="headerlink" href="#delete" title="Link to this heading"></a></h2>
@@ -129,7 +135,7 @@
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>isdef(add_and_double)
 </pre></div>
 </div>
-<p>This will return <cite>true</cite> if “add_and_double” is defined, and <cite>false</cite> otherwise.</p>
+<p>This will push <cite>true</cite> if “add_and_double” is defined, and <cite>false</cite> otherwise.</p>
 </section>
 </section>
 

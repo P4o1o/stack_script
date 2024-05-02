@@ -977,6 +977,23 @@ impl Stack {
                                 }
                             } else if instr.eq("dup") {
                                 return self.dup()
+                            }else if instr.starts_with("dup("){
+                                let strindex = &instr[4..instr.len() - 1];
+                                let index = match self.execute(strindex, env){
+                                    Ok(()) => match self.pop() {
+                                        Ok(x) => match x{
+                                            StackElem::Value(val) => match val{
+                                                Values::Int(x) => x as usize,
+                                                Values::Float(x) => x as usize,
+                                                _ => return Err(Errors::InvalidOperands)
+                                            }
+                                            _ => return Err(Errors::InvalidOperands)
+                                        }
+                                        Err(e) => return Err(e)
+                                    }
+                                    Err(e) => return Err(e)
+                                };
+                                return self.dig(index)
                             } else if instr.starts_with("dup") {
                                 let strindex = &instr[3..instr.len()];
                                 let index = match strindex.parse::<usize>(){
@@ -986,10 +1003,27 @@ impl Stack {
                                 return self.dig(index)
                             } else if instr.eq("swap") {
                                 return self.swap()
+                            }else if instr.starts_with("swap("){
+                                let strindex = &instr[5..instr.len() - 1];
+                                let index = match self.execute(strindex, env){
+                                    Ok(()) => match self.pop() {
+                                        Ok(x) => match x{
+                                            StackElem::Value(val) => match val{
+                                                Values::Int(x) => x as usize,
+                                                Values::Float(x) => x as usize,
+                                                _ => return Err(Errors::InvalidOperands)
+                                            }
+                                            _ => return Err(Errors::InvalidOperands)
+                                        }
+                                        Err(e) => return Err(e)
+                                    }
+                                    Err(e) => return Err(e)
+                                };
+                                return self.precise_swap(index)
                             }else if instr.starts_with("swap"){
                                 let strindex = &instr[4..instr.len()];
                                 let index = match strindex.parse::<usize>(){
-                                    Ok(x) => if x == 0 {return Err(Errors::InvalidInstruction)} else {x},
+                                    Ok(x) => if x == 0 {return Err(Errors::InvalidOperands)} else {x},
                                     Err(_) => return Err(Errors::InvalidInstruction)
                                 };
                                 return self.precise_swap(index)
