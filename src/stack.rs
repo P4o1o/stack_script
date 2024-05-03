@@ -12,23 +12,30 @@ use std::option::Option::{Some, None};
 use std::result::Result;
 use std::result::Result::{Ok, Err};
 use std::string::{String, ToString};
+use crate::stack::Errors::{StackOverflow, StackUnderflow};
 
-pub(crate) const INSTRUCTIONS: [&str; 30] = [
-    "last", "empty", "sizemax", "size",
-    "pow", "sqrt",
+pub(crate) const INSTRUCTIONS: [&str; 38] = [
+    "+", "-", "*", "/", "%", "pow", "sqrt",
+    "size", "maxsize", "bottom", "last", "empty",
     "true", "false",
-    "and", "or", "xor", "not",
-    "drop", "dig", "dup", "swap", "top", "compose", "apply", "quote", "clear",
-    "if", "nop",
+    "not", "and", "or", "xor",
+    "==", "!=", ">", ">=", "<", "<=",
+    "nop", "if", "loop",
+    "quote", "dup", "swap", "compose", "apply", "clear", "drop",
     "exit", "int", "print", "printall",
-    "define", "delete", "isdef"
 ];
-
+pub(crate) const BRACKETS_INSTR: [&str; 10] = [
+    "if(", "loop(",
+    "dup(", "swap(",
+    "load(", "save(",
+    "define(", "isdef(", "delete(",
+    ")"
+];
 pub(crate) const STACK_SIZE: usize = 256;
 
 pub(crate) enum Errors {
-    StackUnderflow,
-    StackOverflow,
+    StackUnderflow(String),
+    StackOverflow(String),
     InvalidOperands(String),
     InvalidCharacter(char),
     ParenthesisError,
@@ -39,6 +46,25 @@ pub(crate) enum Errors {
     FileNotExists(String),
     IOError(String),
     FileNotCreatable(String),
+}
+
+impl Errors {
+    pub(crate) fn msg(&self) -> String{
+        match self {
+            Errors::StackUnderflow(x) => "StackUnderflow by operation ".to_string() + x,
+            Errors::StackOverflow(x) => "StackUnderflow by operation ".to_string() + x,
+            Errors::InvalidOperands(x) => "InvalidOperands for operation ".to_string() + x,
+            Errors::InvalidCharacter(x) => "InvalidCharacter ".to_string() + &x.to_string(),
+            Errors::ParenthesisError => "ParenthesisError".to_string(),
+            Errors::ExecutionEnd => "ExecutionEnd".to_string(),
+            Errors::ZeroDivision => "ZeroDivision".to_string(),
+            Errors::DefineInvalidName(x) => "DefineInvalidName ".to_string() + x,
+            Errors::InvalidInstruction(x) => "InvalidInstruction ".to_string() + x,
+            Errors::FileNotExists(x) => "FileNotExists ".to_string() + x,
+            Errors::IOError(x) => "IOError ".to_string() + x,
+            Errors::FileNotCreatable(x) => "FileNotCreatable ".to_string() + x,
+        }
+    }
 }
 
 pub(crate) enum Values {
@@ -101,7 +127,7 @@ impl Add for StackElem {
 
     fn add(self, rhs: Self) -> Self::Output {
         match match_maths_type(&self, &rhs, |a, b| a + b, |x, y| x + y){
-            None => Err(Errors::InvalidOperands("+".to_string())),
+            None => Err(Errors::InvalidOperands(INSTRUCTIONS[0].to_string())),
             Some(x) => Ok(x)
         }
     }
@@ -112,7 +138,7 @@ impl Sub for StackElem {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match match_maths_type(&self, &rhs, |a, b| a - b, |x, y| x - y){
-            None => Err(Errors::InvalidOperands("-".to_string())),
+            None => Err(Errors::InvalidOperands(INSTRUCTIONS[1].to_string())),
             Some(x) => Ok(x)
         }
     }
@@ -123,7 +149,7 @@ impl Mul for StackElem {
 
     fn mul(self, rhs: Self) -> Self::Output {
         match match_maths_type(&self, &rhs, |a, b| a * b, |x, y| x * y){
-            None => Err(Errors::InvalidOperands("*".to_string())),
+            None => Err(Errors::InvalidOperands(INSTRUCTIONS[2].to_string())),
             Some(x) => Ok(x)
         }
     }
@@ -141,12 +167,12 @@ impl Div for StackElem {
                 Values::Int(a) => if *a == 0 {
                     return Err(Errors::ZeroDivision);
                 },
-                _ => return Err(Errors::InvalidOperands("/".to_string()))
+                _ => return Err(Errors::InvalidOperands(INSTRUCTIONS[3].to_string()))
             },
-            _ => return Err(Errors::InvalidOperands("/".to_string()))
+            _ => return Err(Errors::InvalidOperands(INSTRUCTIONS[3].to_string()))
         };
         match match_maths_type(&self, &rhs, |a, b| a / b, |x, y| x / y){
-            None => Err(Errors::InvalidOperands("/".to_string())),
+            None => Err(Errors::InvalidOperands(INSTRUCTIONS[3].to_string())),
             Some(x) => Ok(x)
         }
     }
@@ -162,9 +188,9 @@ impl Rem for StackElem {
                     0 => Err(Errors::ZeroDivision),
                     _ => Ok(StackElem::Value(Values::Int(x % y)))
                 },
-                _ => Err(Errors::InvalidOperands("%".to_string())),
+                _ => Err(Errors::InvalidOperands(INSTRUCTIONS[4].to_string())),
             },
-            (_, _) => Err(Errors::InvalidOperands("%".to_string())),
+            (_, _) => Err(Errors::InvalidOperands(INSTRUCTIONS[4].to_string())),
         }
     }
 }
@@ -361,6 +387,20 @@ impl StackElem {
     }
 }
 
+enum StackErrors{
+    Overflow,
+    Underflow
+}
+
+impl StackErrors{
+    fn blame(self, operation : String) -> Errors{
+        match self {
+            StackErrors::Overflow => Errors::StackOverflow(operation),
+            StackErrors::Underflow => Errors::StackUnderflow(operation)
+        }
+    }
+}
+
 const DEFAULT_STACK_ELEM: StackElem = StackElem::Value(Values::False);
 
 impl Stack {
@@ -371,18 +411,18 @@ impl Stack {
         }
     }
 
-    fn push(&mut self, val: StackElem) -> Result<(), Errors> {
+    fn push(&mut self, val: StackElem) -> Result<(), StackErrors> {
         if self.next >= STACK_SIZE {
-            return Err(Errors::StackOverflow)
+            return Err(StackErrors::Overflow)
         }
         self.content[self.next] = val;
         self.next += 1;
         Ok(())
     }
 
-    fn pop(&mut self) -> Result<StackElem, Errors> {
+    fn pop(&mut self) -> Result<StackElem, StackErrors> {
         if self.next == 0 {
-            return Err(Errors::StackUnderflow)
+            return Err(StackErrors::Underflow)
         }
         self.next -= 1;
         Ok(self.content[self.next].clone())
@@ -400,41 +440,41 @@ impl Stack {
         self.next = 0;
     }
 
-    fn swap(&mut self) -> Result<(), Errors> {
+    fn swap(&mut self) -> Result<(), StackErrors> {
         if self.next < 2 {
-            return Err(Errors::StackUnderflow);
+            return Err(StackErrors::Underflow);
         }
         self.content.swap(self.next - 2, self.next - 1);
         Ok(())
     }
 
-    fn precise_swap(&mut self, from_first: usize) -> Result<(), Errors> {
+    fn precise_swap(&mut self, from_first: usize) -> Result<(), StackErrors> {
         if self.next < 1 + from_first {
-            return Err(Errors::StackUnderflow);
+            return Err(StackErrors::Underflow);
         }
         self.content.swap(self.next - 1 - from_first, self.next - 1);
         Ok(())
     }
 
-    fn dig(&mut self, i: usize) -> Result<(), Errors> {
+    fn dig(&mut self, i: usize) -> Result<(), StackErrors> {
         if self.next <= i {
-            return Err(Errors::StackUnderflow);
+            return Err(StackErrors::Underflow);
         }
         self.push(self.content[self.next - i - 1].clone())
     }
 
-    fn dup(&mut self) -> Result<(), Errors> {
+    fn dup(&mut self) -> Result<(), StackErrors> {
         if self.next == 0 {
-            return Err(Errors::StackUnderflow)
+            return Err(StackErrors::Underflow)
         } else if self.next >= STACK_SIZE {
-            return Err(Errors::StackOverflow)
+            return Err(StackErrors::Overflow)
         }
         self.push(self.content[self.next - 1].clone())
     }
 
-    fn bottom(&mut self) -> Result<(), Errors> {
+    fn bottom(&mut self) -> Result<(), StackErrors> {
         if self.next == 0 {
-            return Err(Errors::StackUnderflow)
+            return Err(StackErrors::Underflow)
         }
         self.push(self.content[0].clone())
     }
@@ -447,25 +487,37 @@ impl Stack {
 
     fn execute_instruction<T>(&mut self, instr: &String, env: &mut T) -> Result<(), Errors> where T: Environment{
         if !instr.is_empty() {
+            // Quoted Instructions
             if instr.starts_with('[') {
-                return self.push(StackElem::Instruction(instr.clone()))
+                return match self.push(StackElem::Instruction(instr.clone())){
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.blame(instr.clone()))
+                }
             } else {
+                // Numerical Values
                 return match instr.parse::<i32>() {
-                    Ok(i) => self.push(StackElem::Value(Values::Int(i))),
+                    Ok(i) => match self.push(StackElem::Value(Values::Int(i))){
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(e.blame(instr.clone()))
+                    }
                     Err(_) => match instr.parse::<f32>() {
-                        Ok(f) => self.push(StackElem::Value(Values::Float(f))),
+                        Ok(f) => match self.push(StackElem::Value(Values::Float(f))){
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(e.blame(instr.clone()))
+                        }
                         // Mathematical Operations
                         Err(_) => {
-                            if instr.eq("+") {
+                            // +
+                            if instr.eq(INSTRUCTIONS[0]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[0].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[0].to_string()));
                                     }
                                 };
                                 let res = match arg0 + arg1 {
@@ -479,19 +531,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[0].to_string()));
                                     }
                                 }
-                            } else if instr.eq("-") {
+                            // -
+                            } else if instr.eq(INSTRUCTIONS[1]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[1].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[1].to_string()));
                                     }
                                 };
                                 let res = match arg0 - arg1 {
@@ -505,19 +558,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[1].to_string()));
                                     }
                                 }
-                            } else if instr.eq("*") {
+                            // *
+                            } else if instr.eq(INSTRUCTIONS[2]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[2].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[2].to_string()));
                                     }
                                 };
                                 let res = match arg0 * arg1 {
@@ -531,19 +585,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[2].to_string()));
                                     }
                                 }
-                            } else if instr.eq("/") {
+                            // /
+                            } else if instr.eq(INSTRUCTIONS[3]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[3].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[3].to_string()));
                                     }
                                 };
                                 let res = match arg0 / arg1 {
@@ -557,19 +612,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[3].to_string()));
                                     }
                                 }
-                            } else if instr.eq("%") {
+                                // %
+                            } else if instr.eq(INSTRUCTIONS[4]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[4].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[4].to_string()));
                                     }
                                 };
                                 let res = match arg0 % arg1 {
@@ -583,19 +639,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[4].to_string()));
                                     }
                                 }
-                            } else if instr.eq("pow") {
+                                // pow
+                            } else if instr.eq(INSTRUCTIONS[5]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[5].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[5].to_string()));
                                     }
                                 };
                                 let res = match arg0.pow(arg1) {
@@ -609,13 +666,14 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[5].to_string()));
                                     }
                                 }
-                            } else if instr.eq("sqrt") {
+                                // sqrt
+                            } else if instr.eq(INSTRUCTIONS[6]) {
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[6].to_string()))
                                 };
                                 let res = match arg0.sqrt() {
                                     Ok(x) => x,
@@ -628,38 +686,73 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[6].to_string()));
                                     }
                                 }
 
                                 // Values
-                            } else if instr.eq("size") {
-                                return self.push(StackElem::Value(Values::Int(self.next as i32)));
-                            } else if instr.eq("maxsize") {
-                                return self.push(StackElem::Value(Values::Int(STACK_SIZE as i32)));
-                            } else if instr.eq("bottom"){
-                                return self.bottom();
-                            } else if instr.eq("last"){
+                            // size
+                            } else if instr.eq(INSTRUCTIONS[7]) {
+                                return match self.push(StackElem::Value(Values::Int(self.next as i32))){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[7].to_string()))
+                                }
+                            // maxsize
+                            } else if instr.eq(INSTRUCTIONS[8]) {
+                                return match self.push(StackElem::Value(Values::Int(STACK_SIZE as i32))){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[8].to_string()))
+                                }
+                                // bottom
+                            } else if instr.eq(INSTRUCTIONS[9]){
+                                return match self.bottom(){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[9].to_string()))
+                                }
+                                // last
+                            } else if instr.eq(INSTRUCTIONS[10]){
                                 return match self.next == STACK_SIZE - 1 {
-                                    true => self.push(StackElem::Value(Values::True)),
-                                    false => self.push(StackElem::Value(Values::False))
+                                    true => match self.push(StackElem::Value(Values::True)){
+                                        Ok(_) => Ok(()),
+                                        Err(e) => Err(e.blame(INSTRUCTIONS[10].to_string()))
+                                    }
+                                    false => match self.push(StackElem::Value(Values::False)){
+                                        Ok(_) => Ok(()),
+                                        Err(e) => Err(e.blame(INSTRUCTIONS[10].to_string()))
+                                    }
                                 };
-                            } else if instr.eq("empty") {
+                            // empty
+                            } else if instr.eq(INSTRUCTIONS[11]) {
                                 return match self.is_empty() {
-                                    true => self.push(StackElem::Value(Values::True)),
-                                    false => self.push(StackElem::Value(Values::False)),
+                                    true => match self.push(StackElem::Value(Values::True)){
+                                        Ok(_) => Ok(()),
+                                        Err(e) => Err(e.blame(INSTRUCTIONS[11].to_string()))
+                                    }
+                                    false => match self.push(StackElem::Value(Values::False)){
+                                        Ok(_) => Ok(()),
+                                        Err(e) => Err(e.blame(INSTRUCTIONS[11].to_string()))
+                                    }
                                 };
                                 // Boolean Costants
-                            } else if instr.eq("true") {
-                                return self.push(StackElem::Value(Values::True));
-                            } else if instr.eq("false") {
-                                return self.push(StackElem::Value(Values::False));
+                                // true
+                            } else if instr.eq(INSTRUCTIONS[12]) {
+                                return match self.push(StackElem::Value(Values::True)){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[12].to_string()))
+                                }
+                                // false
+                            } else if instr.eq(INSTRUCTIONS[13]) {
+                                return match self.push(StackElem::Value(Values::False)){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[13].to_string()))
+                                }
 
                                 // Boolean Operations
-                            } else if instr.eq("not") {
+                            // not
+                            } else if instr.eq(INSTRUCTIONS[14]) {
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[14].to_string()))
                                 };
                                 let res = match !arg0 {
                                     Ok(val) => val,
@@ -672,45 +765,46 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[14].to_string()));
                                     }
                                 }
-                            } else if instr.eq("and") {
+                                // and
+                            } else if instr.eq(INSTRUCTIONS[15]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[15].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[15].to_string()))
                                     }
                                 };
                                 let res = match arg0 & arg1 {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e)
                                     }
                                 };
                                 match self.push(res) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[15].to_string()))
                                     }
-                                }
-                            } else if instr.eq("or") {
+                                }// or
+                            } else if instr.eq(INSTRUCTIONS[16]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[16].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[16].to_string()));
                                     }
                                 };
                                 let res = match arg0 | arg1 {
@@ -724,19 +818,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[16].to_string()));
                                     }
                                 }
-                            } else if instr.eq("xor") {
+                            // xor
+                            } else if instr.eq(INSTRUCTIONS[17]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[17].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[17].to_string()));
                                     }
                                 };
                                 let res = match arg0 ^ arg1 {
@@ -750,20 +845,21 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[17].to_string()));
                                     }
                                 }
                                 // Confront Operations
-                            } else if instr.eq("==") {
+                                // ==
+                            } else if instr.eq(INSTRUCTIONS[18]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[18].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[18].to_string()));
                                     }
                                 };
                                 let res = match arg0 == arg1 {
@@ -774,19 +870,20 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[18].to_string()));
                                     }
                                 }
-                            } else if instr.eq("!=") {
+                                // !=
+                            } else if instr.eq(INSTRUCTIONS[19]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[19].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[19].to_string()));
                                     }
                                 };
                                 let res = match arg0 == arg1 {
@@ -797,126 +894,132 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[19].to_string()));
                                     }
                                 }
-                            }else if instr.eq(">"){
+                                // >
+                            }else if instr.eq(INSTRUCTIONS[20]){
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[20].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[20].to_string()));
                                     }
                                 };
                                 let res = match arg0.partial_cmp(&arg1) {
                                     Some(x) => x == Ordering::Greater,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands(">".to_string()));
+                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[20].to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[20].to_string()));
                                     }
                                 }
-                            }else if instr.eq(">="){
+                                // >=
+                            }else if instr.eq(INSTRUCTIONS[21]){
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[21].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[21].to_string()));
                                     }
                                 };
                                 let res = match arg0.partial_cmp(&arg1) {
                                     Some(x) => x == Ordering::Greater || x == Ordering::Equal,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands(">=".to_string()));
+                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[21].to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[21].to_string()));
                                     }
                                 }
-                            }else if instr.eq("<"){
+                            // <
+                            }else if instr.eq(INSTRUCTIONS[22]){
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[22].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[22].to_string()));
                                     }
                                 };
                                 let res = match arg0.partial_cmp(&arg1) {
                                     Some(x) => x == Ordering::Less,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands("<".to_string()));
+                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[22].to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[22].to_string()));
                                     }
                                 }
-                            }else if instr.eq("<="){
+                                // <=
+                            }else if instr.eq(INSTRUCTIONS[23]){
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[23].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[23].to_string()));
                                     }
                                 };
                                 let res = match arg0.partial_cmp(&arg1) {
                                     Some(x) => x == Ordering::Less || x == Ordering::Equal,
                                     None => {
                                         self.next += 2;
-                                        return Err(Errors::InvalidOperands("<=".to_string()));
+                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[23].to_string()));
                                     }
                                 };
                                 match self.push(StackElem::boolean(res)) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[23].to_string()));
                                     }
                                 }
                                 // Flow Control
-                            } else if instr.eq("nop") {
+                            // nop
+                            } else if instr.eq(INSTRUCTIONS[24]) {
                                 return Ok(());
-                            } else if instr.eq("if") {
+                            // if
+                            } else if instr.eq(INSTRUCTIONS[25]) {
                                 let condfalse = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[25].to_string()))
                                 };
                                 let condtrue = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[25].to_string()));
                                     }
                                 };
                                 return match self.pop() {
@@ -927,7 +1030,7 @@ impl Stack {
                                                     Some(ins) => self.execute(&ins, env),
                                                     None => {
                                                         self.next += 2;
-                                                        return Err(Errors::InvalidOperands("if".to_string()));
+                                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[25].to_string()));
                                                     }
                                                 }
                                             }
@@ -936,33 +1039,34 @@ impl Stack {
                                                     Some(ins) => self.execute(&ins, env),
                                                     None => {
                                                         self.next += 2;
-                                                        return Err(Errors::InvalidOperands("if".to_string()));
+                                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[25].to_string()));
                                                     }
                                                 }
                                             }
                                             _ => {
                                                 self.next += 2;
-                                                Err(Errors::InvalidOperands("if".to_string()))
+                                                Err(Errors::InvalidOperands(INSTRUCTIONS[25].to_string()))
                                             }
                                         }
                                         _ => {
                                             self.next += 2;
-                                            Err(Errors::InvalidOperands("if".to_string()))
+                                            Err(Errors::InvalidOperands(INSTRUCTIONS[25].to_string()))
                                         }
                                     }
-                                    Err(e) => Err(e)
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[25].to_string()))
                                 };
-                            }else if instr.starts_with("if(") {
+                                // if(
+                            }else if instr.starts_with(BRACKETS_INSTR[0]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let cond = &instr[3..instr.len() - 1];
                                 let condfalse = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(instr.clone()))
                                 };
                                 let condtrue = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(instr.clone()));
                                     }
                                 };
                                 match self.execute(cond, env){
@@ -1003,15 +1107,16 @@ impl Stack {
                                             Err(Errors::InvalidOperands(instr.clone()))
                                         }
                                     }
-                                    Err(e) => Err(e)
+                                    Err(e) => Err(e.blame(instr.clone()))
                                 };
-                            }else if instr.eq("loop"){
+                                // loop
+                            }else if instr.eq(INSTRUCTIONS[26]){
                                 let opers = match self.pop() {
                                     Ok(x) => match x.get_instructions(){
                                         Some(cont) => cont,
-                                        None => return Err(Errors::InvalidOperands("loop".to_string()))
+                                        None => return Err(Errors::InvalidOperands(INSTRUCTIONS[26].to_string()))
                                     },
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[26].to_string()))
                                 };
                                 loop{
                                     match self.execute(&opers, env){
@@ -1023,21 +1128,22 @@ impl Stack {
                                             StackElem::Value(val) => match val{
                                                 Values::True => continue,
                                                 Values::False => break,
-                                                _ => return Err(Errors::InvalidOperands("loop".to_string()))
+                                                _ => return Err(Errors::InvalidOperands(INSTRUCTIONS[26].to_string()))
                                             }
-                                            _ => return Err(Errors::InvalidOperands("loop".to_string()))
+                                            _ => return Err(Errors::InvalidOperands(INSTRUCTIONS[26].to_string()))
                                         }
-                                        Err(e) => return Err(e)
+                                        Err(e) => return Err(e.blame(INSTRUCTIONS[26].to_string()))
                                     }
                                 }
-                            }else if instr.starts_with("loop(") && instr.ends_with(")"){
+                                // loop(
+                            }else if instr.starts_with(BRACKETS_INSTR[1]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let cond = &instr[5..instr.len() - 1];
                                 let opers = match self.pop() {
                                     Ok(x) => match x.get_instructions(){
                                         Some(cont) => cont,
                                         None => return Err(Errors::InvalidOperands(instr.clone()))
                                     },
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(instr.clone()))
                                 };
                                 loop{
                                     match self.execute(cond, env){
@@ -1053,35 +1159,41 @@ impl Stack {
                                                 }
                                                 _ => return Err(Errors::InvalidOperands(instr.clone()))
                                             }
-                                            Err(e) => return Err(e)
+                                            Err(e) => return Err(e.blame(instr.clone()))
                                         }
                                         Err(e) => return Err(e)
                                     }
                                 }
                                 // Stack Operations
-                            } else if instr.eq("quote") {
+                            // quote
+                            } else if instr.eq(INSTRUCTIONS[27]) {
                                 let val = match self.pop() {
                                     Ok(a) => match a {
                                         StackElem::Instruction(x) => StackElem::Instruction(format!("[{}]", x)),
                                         StackElem::Value(x) => match x {
                                             Values::Float(v) => StackElem::Instruction(format!("[{}]", v)),
                                             Values::Int(v) => StackElem::Instruction(format!("[{}]", v)),
-                                            Values::True => StackElem::Instruction("[true]".to_string()),
-                                            Values::False => StackElem::Instruction("[false]".to_string())
+                                            Values::True => StackElem::Instruction(format!("[{}]", INSTRUCTIONS[12])),
+                                            Values::False => StackElem::Instruction(format!("[{}]", INSTRUCTIONS[13]))
                                         }
                                     },
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[27].to_string()))
                                 };
                                 match self.push(val) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[27].to_string()));
                                     }
                                 }
-                            } else if instr.eq("dup") {
-                                return self.dup()
-                            }else if instr.starts_with("dup("){
+                                // dup
+                            } else if instr.eq(INSTRUCTIONS[28]) {
+                                return match self.dup(){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[28].to_string()))
+                                }
+                                // dup(
+                            }else if instr.starts_with(BRACKETS_INSTR[2]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let strindex = &instr[4..instr.len() - 1];
                                 let index = match self.execute(strindex, env){
                                     Ok(()) => match self.pop() {
@@ -1093,21 +1205,33 @@ impl Stack {
                                             }
                                             _ => return Err(Errors::InvalidOperands(instr.clone()))
                                         }
-                                        Err(e) => return Err(e)
+                                        Err(e) => return Err(e.blame(instr.clone()))
                                     }
                                     Err(e) => return Err(e)
                                 };
-                                return self.dig(index)
-                            } else if instr.starts_with("dup") {
+                                return match self.dig(index){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(instr.clone()))
+                                }
+                                // dup_
+                            } else if instr.starts_with(INSTRUCTIONS[30]) {
                                 let strindex = &instr[3..instr.len()];
                                 let index = match strindex.parse::<usize>(){
                                     Ok(x) => x,
                                     Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
                                 };
-                                return self.dig(index)
-                            } else if instr.eq("swap") {
-                                return self.swap()
-                            }else if instr.starts_with("swap("){
+                                return match self.dig(index){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(instr.clone()))
+                                }
+                                // swap
+                            } else if instr.eq(INSTRUCTIONS[29]) {
+                                return match self.swap(){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(INSTRUCTIONS[29].to_string()))
+                                }
+                                // swap(
+                            }else if instr.starts_with(BRACKETS_INSTR[3]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let strindex = &instr[5..instr.len() - 1];
                                 let index = match self.execute(strindex, env){
                                     Ok(()) => match self.pop() {
@@ -1119,28 +1243,36 @@ impl Stack {
                                             }
                                             _ => return Err(Errors::InvalidOperands(instr.clone()))
                                         }
-                                        Err(e) => return Err(e)
+                                        Err(e) => return Err(e.blame(instr.clone()))
                                     }
                                     Err(e) => return Err(e)
                                 };
-                                return self.precise_swap(index)
-                            }else if instr.starts_with("swap"){
+                                return match self.precise_swap(index){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(instr.clone()))
+                                }
+                                // swap_
+                            }else if instr.starts_with(INSTRUCTIONS[29]){
                                 let strindex = &instr[4..instr.len()];
                                 let index = match strindex.parse::<usize>(){
                                     Ok(x) => if x == 0 {return Ok(())} else {x},
                                     Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
                                 };
-                                return self.precise_swap(index)
-                            } else if instr.eq("compose") {
+                                return match self.precise_swap(index){
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(e.blame(instr.clone()))
+                                }
+                                // compose
+                            } else if instr.eq(INSTRUCTIONS[30]) {
                                 let arg1 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[30].to_string()))
                                 };
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[30].to_string()));
                                     }
                                 };
                                 let res = match arg0.extend(arg1) {
@@ -1154,52 +1286,58 @@ impl Stack {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 2;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[30].to_string()));
                                     }
                                 }
-                            } else if instr.eq("apply") {
+                                // apply
+                            } else if instr.eq(INSTRUCTIONS[31]) {
                                 let arg0 = match self.pop() {
                                     Ok(x) => x,
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[31].to_string()))
                                 };
                                 let res = match arg0.get_instructions() {
                                     Some(x) => x,
                                     None => {
                                         self.next += 1;
-                                        return Err(Errors::InvalidOperands("apply".to_string()));
+                                        return Err(Errors::InvalidOperands(INSTRUCTIONS[31].to_string()));
                                     }
                                 };
                                 return self.execute(&res, env)
-                            } else if instr.eq("clear") {
+                                // clear
+                            } else if instr.eq(INSTRUCTIONS[32]) {
                                 self.next = 0;
-                            } else if instr.eq("drop") {
+                                // drop
+                            } else if instr.eq(INSTRUCTIONS[33]) {
                                 match self.pop() {
                                     Ok(_) => {}
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[33].to_string()))
                                 }
                                 // System Operations
-                            } else if instr.eq("exit") {
+                                // exit
+                            } else if instr.eq(INSTRUCTIONS[34]) {
                                 return Err(Errors::ExecutionEnd);
-                            } else if instr.eq("int") {
+                                // int
+                            } else if instr.eq(INSTRUCTIONS[35]) {
                                 let val = match self.pop() {
                                     Ok(a) => match a {
-                                        StackElem::Instruction(_) => return Err(Errors::InvalidOperands("int".to_string())),
+                                        StackElem::Instruction(_) => return Err(Errors::InvalidOperands(INSTRUCTIONS[35].to_string())),
                                         StackElem::Value(x) => match x {
                                             Values::Float(v) => StackElem::Value(Values::Int(v as i32)),
                                             Values::Int(_) => return Ok(()),
-                                            _ => return Err(Errors::InvalidOperands("int".to_string()))
+                                            _ => return Err(Errors::InvalidOperands(INSTRUCTIONS[35].to_string()))
                                         }
                                     },
-                                    Err(e) => return Err(e)
+                                    Err(e) => return Err(e.blame(INSTRUCTIONS[35].to_string()))
                                 };
                                 match self.push(val) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         self.next += 1;
-                                        return Err(e);
+                                        return Err(e.blame(INSTRUCTIONS[35].to_string()));
                                     }
                                 }
-                            } else if instr.starts_with("load("){
+                                // load(
+                            } else if instr.starts_with(BRACKETS_INSTR[4]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let path = &instr[5..instr.len() - 1];
                                 let mut file = match File::open(path){
                                     Ok(x) => x,
@@ -1208,10 +1346,11 @@ impl Stack {
                                 let mut cont = String::new();
                                 match file.read_to_string(&mut cont){
                                         Ok(_) => {}
-                                        Err(_) => return Err(Errors::IOError(path.to_string()))
+                                        Err(_) => return Err(Errors::IOError(instr.clone()))
                                     }
                                 return self.execute(&cont, env)
-                            }else if instr.starts_with("save("){
+                                // save(
+                            }else if instr.starts_with(BRACKETS_INSTR[5]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]){
                                 let path = &instr[5..instr.len() - 1];
                                 let mut file = match OpenOptions::new()
                                     .create(true)
@@ -1223,26 +1362,28 @@ impl Stack {
                                 for i in 0..self.next {
                                     match file.write_all(&(self.content[i].to_string() + " ").into_bytes()){
                                         Ok(_) => {}
-                                        Err(_) => return Err(Errors::IOError(path.to_string()))
+                                        Err(_) => return Err(Errors::IOError(instr.clone()))
                                     }
                                 }
-                            } else if instr.eq("print") {
+                                // print
+                            } else if instr.eq(INSTRUCTIONS[36]) {
                                 if self.next == 0 {
-                                    return Err(Errors::StackUnderflow);
+                                    return Err(Errors::StackUnderflow(INSTRUCTIONS[36].to_string()));
                                 }
                                 println!("{}", match &self.content[self.next - 1] {
                                     StackElem::Instruction(i) => i.to_string(),
                                     StackElem::Value(v) => match v {
                                         Values::Float(f) => f.to_string(),
                                         Values::Int(i) => i.to_string(),
-                                        Values::True => "true".to_string(),
-                                        Values::False => "false".to_string()
+                                        Values::True => INSTRUCTIONS[12].to_string(),
+                                        Values::False => INSTRUCTIONS[13].to_string()
                                     }
                                 });
-                            } else if instr.eq("printall") {
+                                // printall
+                            } else if instr.eq(INSTRUCTIONS[37]) {
                                 self.print();
                                 // Keywords
-                            } else if instr.starts_with("define(") && instr.ends_with(")") {
+                            } else if instr.starts_with(BRACKETS_INSTR[6]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]) {
                                 let name = &instr[7..instr.len() - 1];
                                 match correct_define_name(name.trim()) {
                                     true => {
@@ -1253,13 +1394,13 @@ impl Stack {
                                                     None => return Err(Errors::InvalidOperands(instr.clone()))
                                                 }
                                             }
-                                            Err(e) => return Err(e)
+                                            Err(e) => return Err(e.blame(instr.clone()))
                                         };
                                         env.set(name, body);
                                     }
                                     false => return Err(Errors::DefineInvalidName(name.to_string()))
                                 }
-                            } else if instr.starts_with("isdef(") && instr.ends_with(")") {
+                            } else if instr.starts_with(BRACKETS_INSTR[7]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]) {
                                 let name = &instr[6..instr.len() - 1];
                                 match correct_define_name(name) {
                                     true => {
@@ -1267,11 +1408,14 @@ impl Stack {
                                             true => StackElem::Value(Values::True),
                                             false => StackElem::Value(Values::False)
                                         };
-                                        return self.push(val);
+                                        return match self.push(val){
+                                            Ok(_) => Ok(()),
+                                            Err(e) => Err(e.blame(instr.clone()))
+                                        }
                                     }
                                     false => return Err(Errors::DefineInvalidName(name.to_string()))
                                 }
-                            } else if instr.starts_with("delete(") && instr.ends_with(")") {
+                            } else if instr.starts_with(BRACKETS_INSTR[8]) && instr.ends_with(BRACKETS_INSTR[BRACKETS_INSTR.len() - 1]) {
                                 let name = &instr[7..instr.len() - 1];
                                 match correct_define_name(name) {
                                     true => env.remove(name),

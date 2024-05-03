@@ -105,6 +105,17 @@ if
 </div>
 <p>Because <cite>true</cite> is on the stack, it executes the second quoted instruction in the stack  <cite>[5 6 *]</cite>, which multiplies 5 and 6, resulting in 30.</p>
 <p>If the boolean value is <cite>false</cite>, it executes the first quoted instruction.</p>
+<p>You can also use the if instruction in this way:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[quoted instruction to execute if condition true]
+[quoted instruction to execute if condition false]
+if(instruction)
+</pre></div>
+</div>
+<p>where first the two quoted instruction are popped, then <cite>instruction</cite> will be executed, then a value will be popped and that will be our boolean for the branch</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>-2 [5 6 *] [3 2 *] if( 2 + 0 ==) =&gt; 30
+</pre></div>
+</div>
 </section>
 <section id="nop">
 <h2><strong>nop</strong><a class="headerlink" href="#nop" title="Link to this heading"></a></h2>
@@ -134,7 +145,7 @@ if
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1 [1 + dup 10 &lt;] loop =&gt; 10
 </pre></div>
 </div>
-<p>The loop can be perform also with ‘[instructions] loop(condition)’ but in this way it executes the condition expression first. You can think of it as a while loop</p>
+<p>The loop can be perform also with <cite>[instructions] loop(condition)</cite> but in this way it executes the condition expression first. You can think of it as a while loop</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>0 [0 swap] loop(1 + dup 3 &lt;) =&gt; 0 0 3
 

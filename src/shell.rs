@@ -5,26 +5,14 @@ use crate::interpreter::BaseInterpreter;
 pub fn base_shell(){
     let mut stack = BaseInterpreter::new();
     loop{
-        print!("> "); 
+        print!("> ");
         io::stdout().flush().unwrap();
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         match stack.execute(&input){
             Ok(_) => {}
-            Err(e) => match e {
-                Errors::StackUnderflow => println!("StackUnderflow"),
-                Errors::StackOverflow => println!("StackOverflow"),
-                Errors::InvalidOperands(_) => println!("InvalidOperation"),
-                Errors::InvalidCharacter(_) => println!("InvalidCharacter"),
-                Errors::ParenthesisError => println!("ParenthesisError"),
-                Errors::ExecutionEnd => { println!("Program end"); break; },
-                Errors::ZeroDivision => println!("ZeroDivision"),
-                Errors::DefineInvalidName(_) => println!("DefineInvalidName"),
-                Errors::InvalidInstruction(_) => println!("InvalidInstruction"),
-                Errors::FileNotExists(_) => println!("FileNotExists"),
-                Errors::IOError(_) => println!("IOError"),
-                Errors::FileNotCreatable(_) => println!("FileNotCreatable"),
-            }
+            Err(Errors::ExecutionEnd) => { println!("Program End"); break; },
+            Err(e) => println!("{}", e.msg())
         };
     }
 }

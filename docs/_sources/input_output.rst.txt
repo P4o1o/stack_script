@@ -30,3 +30,26 @@ Suppose we have the following instructions on the stack:
     1 2 3 printall
 
 After executing the `printall` operation, the values 1, 2, and 3 will be printed to the output, each separated by a new line.
+
+**save[]**
+The `save` instruction saves the whole content of the stack in the specified file (in appending mode)
+
+Example:
+
+.. code-block:: text
+
+    10 32 3 2 4 3  save(examples/example0.sksp)
+
+
+**load[]**
+The `save` instruction read the content of the specified file and execute its content
+
+
+Example:
+
+.. code-block:: text
+
+    load(examples/example0.sksp) => 10 32 3 2 4 3
+
+    load(examples/example1.sksp)
+    mean => 9

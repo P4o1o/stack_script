@@ -31,7 +31,7 @@ Example:
     4 dup => 4 4
     5 3 2 4 dup3 => 5 3 2 4 5
 
-Alternatively you can duplicate 2 values with the instruction dup('instruction') where the command 'instruction' is executed, then it pops from the stack the index of the value to duplicate
+Alternatively you can duplicate 2 values with the instruction dup(instruction) where the command `instruction` is executed, then it pops from the stack the index of the value to duplicate
 
 .. code-block:: text
 
@@ -52,7 +52,7 @@ Example:
 
     7 2 4 3 22 swap4 => 22 2 4 3 7
 
-Alternatively you can swap 2 values with the instruction swap(instruction) where the command 'instruction' is executed, then it pops from the stack the index to swap with
+Alternatively you can swap 2 values with the instruction swap(instruction) where the command `instruction` is executed, then it pops from the stack the index to swap with
 
 .. code-block:: text
 
