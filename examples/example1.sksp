@@ -8,4 +8,7 @@
 
 [[xor] loop(size 1 == not)] define(xorall)
 
-[size swap(size 1 -) [+] loop(size 2 == not) swap /] define(mean)
+[size swaptop [+] loop(size 2 == not) swap /] define(mean)
+
+[from [value swaptop 1 + dup to < swap swaptop swap] loop swaptop drop] define(fill)
+[0] define(from) [10] define(to) [3.1415927] define(value)

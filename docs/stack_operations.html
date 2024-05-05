@@ -52,7 +52,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#drop"><strong>drop</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dup"><strong>dup</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#swap"><strong>swap</strong></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#bottom"><strong>bottom</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#top"><strong>top</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#compose"><strong>compose</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#apply"><strong>apply</strong></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#quote"><strong>quote</strong></a></li>
@@ -94,10 +94,14 @@
 <section id="pushing-instructions">
 <h2><strong>Pushing Instructions</strong><a class="headerlink" href="#pushing-instructions" title="Link to this heading"></a></h2>
 <p>Instructions can be pushed onto the stack by enclosing them in square brackets []. These instructions can then be executed using the <cite>apply</cite> operation.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[1] [2 3 +] [[7.0293 6.8933]] [[2 3 4 5] 3 4 *]
+</pre></div>
+</div>
 </section>
 <section id="drop">
 <h2><strong>drop</strong><a class="headerlink" href="#drop" title="Link to this heading"></a></h2>
-<p>The <cite>drop</cite> operation removes the top value from the stack.</p>
+<p>The <cite>drop</cite> operation removes the first value from the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 3 drop =&gt; 5
 </pre></div>
@@ -105,7 +109,7 @@
 </section>
 <section id="dup">
 <h2><strong>dup</strong><a class="headerlink" href="#dup" title="Link to this heading"></a></h2>
-<p>The <cite>dup</cite> operation (usage: dup or dup0, dup1, dup2, …) duplicates a value on the stack and pushes the duplicate onto the stack.</p>
+<p>The <cite>dup</cite> operation (usage: dup or dup0, dup1, dup2, …, duptop) duplicates a value on the stack and pushes the duplicate onto the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 dup =&gt; 4 4
 5 3 2 4 dup3 =&gt; 5 3 2 4 5
@@ -120,7 +124,7 @@
 </section>
 <section id="swap">
 <h2><strong>swap</strong><a class="headerlink" href="#swap" title="Link to this heading"></a></h2>
-<p>The <cite>swap</cite> operation (usage same as dup: swap or swap1, swap2, swap3 …) swaps the positions of the top two values on the stack.</p>
+<p>The <cite>swap</cite> operation (usage same as dup: swap0 do nothing, swap or swap1, swap2, swap3 …, swaptop) swaps the positions of the first value on the stack with another specified (default 1).</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 3 swap =&gt; 3 5
 
@@ -134,17 +138,17 @@
 </pre></div>
 </div>
 </section>
-<section id="bottom">
-<h2><strong>bottom</strong><a class="headerlink" href="#bottom" title="Link to this heading"></a></h2>
-<p>The <cite>bottom</cite> operation duplicates the top value on the stack and pushes it onto the stack without removing the original.</p>
+<section id="top">
+<h2><strong>top</strong><a class="headerlink" href="#top" title="Link to this heading"></a></h2>
+<p>The <cite>top</cite> operation duplicates the top (the first value pushed in the stack) value on the stack and pushes it onto the stack without removing the original (the same of duptop).</p>
 <p>Example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 5 7 3 2 1 bottom =&gt; 4 5 7 3 2 1 4
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 5 7 3 2 1 top =&gt; 4 5 7 3 2 1 4
 </pre></div>
 </div>
 </section>
 <section id="compose">
 <h2><strong>compose</strong><a class="headerlink" href="#compose" title="Link to this heading"></a></h2>
-<p>The <cite>compose</cite> operation composes a new instruction by concatenating the top two instructions on the stack and pushes the result onto the stack.</p>
+<p>The <cite>compose</cite> operation composes a new instruction by popping the first two instructions on the stack and concatenating them, then it pushes the result onto the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[swap] [apply] compose =&gt; [swap apply]
 </pre></div>
@@ -152,7 +156,7 @@
 </section>
 <section id="apply">
 <h2><strong>apply</strong><a class="headerlink" href="#apply" title="Link to this heading"></a></h2>
-<p>The <cite>apply</cite> operation pops a list of instructions from the stack and executes them. This is typically used to execute instructions pushed onto the stack using square brackets.</p>
+<p>The <cite>apply</cite> operation pops a quoted instruction from the stack and execute it. (It executes the instructions pushed onto the stack using square brackets)</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[3 4 *] apply =&gt; 12
 </pre></div>
@@ -161,7 +165,7 @@
 <section id="quote">
 <h2><strong>quote</strong><a class="headerlink" href="#quote" title="Link to this heading"></a></h2>
 <p>The <cite>quote</cite> operation quotes the first value on the stack.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>3 quote =&gt; [3]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2 7 4 5 1 3 quote =&gt; 2 7 4 5 1 [3]
 </pre></div>
 </div>
 </section>
@@ -174,7 +178,7 @@
 <ul class="simple">
 <li><p><cite>last</cite>: A boolean value indicating whether the current value is the last pushed onto the stack.</p></li>
 <li><p><cite>empty</cite>: A boolean value indicating whether the stack is empty.</p></li>
-<li><p><cite>sizemax</cite>: The maximum size of the stack.</p></li>
+<li><p><cite>maxsize</cite>: The maximum size of the stack.</p></li>
 <li><p><cite>size</cite>: The current size of the stack. When executed, it pushes the size onto the stack.</p></li>
 </ul>
 </section>

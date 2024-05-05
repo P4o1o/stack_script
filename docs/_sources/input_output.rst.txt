@@ -4,7 +4,7 @@ Input/Output
 **print**
 ~~~~~~~~~
 
-The `print` operation prints the top value of the stack without removing it.
+The `print` operation prints the first value of the stack to be popped without removing it.
 
 Example:
 

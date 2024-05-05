@@ -12,11 +12,10 @@ use std::option::Option::{Some, None};
 use std::result::Result;
 use std::result::Result::{Ok, Err};
 use std::string::{String, ToString};
-use crate::stack::Errors::{StackOverflow, StackUnderflow};
 
 pub(crate) const INSTRUCTIONS: [&str; 38] = [
     "+", "-", "*", "/", "%", "pow", "sqrt",
-    "size", "maxsize", "bottom", "last", "empty",
+    "size", "maxsize", "top", "last", "empty",
     "true", "false",
     "not", "and", "or", "xor",
     "==", "!=", ">", ">=", "<", "<=",
@@ -52,7 +51,7 @@ impl Errors {
     pub(crate) fn msg(&self) -> String{
         match self {
             Errors::StackUnderflow(x) => "StackUnderflow by operation ".to_string() + x,
-            Errors::StackOverflow(x) => "StackUnderflow by operation ".to_string() + x,
+            Errors::StackOverflow(x) => "StackOverflow by operation ".to_string() + x,
             Errors::InvalidOperands(x) => "InvalidOperands for operation ".to_string() + x,
             Errors::InvalidCharacter(x) => "InvalidCharacter ".to_string() + &x.to_string(),
             Errors::ParenthesisError => "ParenthesisError".to_string(),
@@ -703,7 +702,7 @@ impl Stack {
                                     Ok(_) => Ok(()),
                                     Err(e) => Err(e.blame(INSTRUCTIONS[8].to_string()))
                                 }
-                                // bottom
+                                // top
                             } else if instr.eq(INSTRUCTIONS[9]){
                                 return match self.bottom(){
                                     Ok(_) => Ok(()),
@@ -1214,11 +1213,19 @@ impl Stack {
                                     Err(e) => Err(e.blame(instr.clone()))
                                 }
                                 // dup_
-                            } else if instr.starts_with(INSTRUCTIONS[30]) {
+                            } else if instr.starts_with(INSTRUCTIONS[28]) {
                                 let strindex = &instr[3..instr.len()];
                                 let index = match strindex.parse::<usize>(){
                                     Ok(x) => x,
-                                    Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
+                                    Err(_) => match strindex.eq(INSTRUCTIONS[9]){
+                                        true => {
+                                            if self.next == 0{
+                                                return Err(Errors::StackUnderflow(INSTRUCTIONS[28].to_string() + INSTRUCTIONS[9]))
+                                            }
+                                            self.next - 1
+                                        },
+                                        false => return Err(Errors::InvalidInstruction(instr.clone()))
+                                    }
                                 };
                                 return match self.dig(index){
                                     Ok(_) => Ok(()),
@@ -1256,7 +1263,15 @@ impl Stack {
                                 let strindex = &instr[4..instr.len()];
                                 let index = match strindex.parse::<usize>(){
                                     Ok(x) => if x == 0 {return Ok(())} else {x},
-                                    Err(_) => return Err(Errors::InvalidInstruction(instr.clone()))
+                                    Err(_) => match strindex.eq(INSTRUCTIONS[9]){
+                                        true => {
+                                            if self.next == 0{
+                                                return Err(Errors::StackUnderflow(INSTRUCTIONS[29].to_string() + INSTRUCTIONS[9]))
+                                            }
+                                            self.next - 1
+                                        },
+                                        false => return Err(Errors::InvalidInstruction(instr.clone()))
+                                    }
                                 };
                                 return match self.precise_swap(index){
                                     Ok(_) => Ok(()),
