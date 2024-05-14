@@ -1,14 +1,14 @@
-[[+] loop(size 1 == not)] define(sumall)
+[[+] loop(size 1 >)] define(sumall)
 
-[[*] loop(size 1 == not)] define(mulall)
+[[*] loop(size 1 >)] define(mulall)
 
-[[and] loop(size 1 == not)] define(andall)
+[[and] loop(size 1 >)] define(andall)
 
-[[or] loop(size 1 == not)] define(orall)
+[[or] loop(size 1 >)] define(orall)
 
-[[xor] loop(size 1 == not)] define(xorall)
+[[xor] loop(size 1 >)] define(xorall)
 
-[size swaptop [+] loop(size 2 == not) swap /] define(mean)
+[size swap(size 1 -) [+] loop(size 2 >) swap /] define(mean)
 
-[from [value swaptop 1 + dup to < swap swaptop swap] loop swaptop drop] define(fill)
-[0] define(from) [10] define(to) [3.1415927] define(value)
+[[swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap] swap3 quote compose swap quote swap2 compose compose loop swap(size 1 -) drop] define(fill)
+
