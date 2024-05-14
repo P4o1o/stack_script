@@ -28,7 +28,7 @@ Example:
 **dup**
 ~~~~~~~
 
-The `dup` operation (usage: dup or dup0, dup1, dup2, ..., duptop) duplicates a value on the stack and pushes the duplicate onto the stack.
+The `dup` operation (usage: dup or dup0, dup1, dup2, ...) duplicates a value on the stack and pushes the duplicate onto the stack.
 
 Example:
 
@@ -48,7 +48,7 @@ Alternatively you can duplicate 2 values with the instruction dup(instruction) w
 **swap**
 ~~~~~~~~
 
-The `swap` operation (usage same as dup: swap0 do nothing, swap or swap1, swap2, swap3 ..., swaptop) swaps the positions of the first value on the stack with another specified (default 1).
+The `swap` operation (usage same as dup: swap0 do nothing, swap or swap1, swap2, swap3 ...) swaps the positions of the first value on the stack with another specified (default 1).
 
 Example:
 
@@ -107,6 +107,7 @@ The `quote` operation quotes the first value on the stack.
 .. code-block:: text
 
     2 7 4 5 1 3 quote => 2 7 4 5 1 [3]
+    [swap /] quote => [[swap /]]
 
 **clear**
 ~~~~~~~~~
@@ -118,5 +119,4 @@ The `clear` operation clears the entire stack.
 
 - `last`: A boolean value indicating whether the current value is the last pushed onto the stack.
 - `empty`: A boolean value indicating whether the stack is empty.
-- `maxsize`: The maximum size of the stack.
 - `size`: The current size of the stack. When executed, it pushes the size onto the stack.

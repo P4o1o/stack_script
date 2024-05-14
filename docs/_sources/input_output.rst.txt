@@ -31,7 +31,7 @@ Suppose we have the following instructions on the stack:
 
 After executing the `printall` operation, the values 1, 2, and 3 will be printed to the output, each separated by a new line.
 
-**save[]**
+**save()**
 The `save` instruction saves the whole content of the stack in the specified file (in appending mode)
 
 Example:
@@ -41,7 +41,7 @@ Example:
     10 32 3 2 4 3  save(examples/example0.sksp)
 
 
-**load[]**
+**load()**
 The `save` instruction read the content of the specified file and execute its content
 
 

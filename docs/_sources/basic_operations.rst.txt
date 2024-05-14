@@ -45,7 +45,7 @@ Example:
 **Division (/)**
 ~~~~~~~~~~~~~~~~
 
-The `/` operator divides the second value on the stack by the first value by popping them from the stack, performing the division operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. If at least one of the operands is a floating-point number, the result will be a floating-point number.
+The `/` operator divides the second value on the stack by the first value by popping them from the stack, performing the division operation, and pushing the result back onto the stack. Both integer and floating-point numbers are supported. The result will always be a floating-point number.
 
 Example:
 
@@ -74,6 +74,17 @@ Example:
 .. code-block:: text
 
     2 3 pow => 8.0
+
+**Square Root (sqrt)**
+~~~~~~~~~~~~~~~~~~~~~~
+
+The `sqrt` compute the square root of the first value in the stack and pushes the result back onto the stack. Both integer and floating-point numbers are supported. The result will always be a floating-point number.
+
+Example:
+
+.. code-block:: text
+
+    9 sqrt => 3.00000
 
 Boolean Operations
 -------------------

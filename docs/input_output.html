@@ -55,6 +55,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="instruction_definition.html">Instruction Definition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 
         </div>
@@ -102,13 +103,13 @@
 </pre></div>
 </div>
 <p>After executing the <cite>printall</cite> operation, the values 1, 2, and 3 will be printed to the output, each separated by a new line.</p>
-<p><strong>save[]</strong>
+<p><strong>save()</strong>
 The <cite>save</cite> instruction saves the whole content of the stack in the specified file (in appending mode)</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>10 32 3 2 4 3  save(examples/example0.sksp)
 </pre></div>
 </div>
-<p><strong>load[]</strong>
+<p><strong>load()</strong>
 The <cite>save</cite> instruction read the content of the specified file and execute its content</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>load(examples/example0.sksp) =&gt; 10 32 3 2 4 3

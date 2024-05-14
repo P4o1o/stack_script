@@ -15,6 +15,7 @@ Welcome to stack_script's documentation!
    loop_control
    input_output
    instruction_definition
+   examples
 
 
 Indices and tables

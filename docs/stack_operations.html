@@ -63,6 +63,7 @@
 <li class="toctree-l1"><a class="reference internal" href="loop_control.html">Loop Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="input_output.html">Input/Output</a></li>
 <li class="toctree-l1"><a class="reference internal" href="instruction_definition.html">Instruction Definition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 
         </div>
@@ -109,7 +110,7 @@
 </section>
 <section id="dup">
 <h2><strong>dup</strong><a class="headerlink" href="#dup" title="Link to this heading"></a></h2>
-<p>The <cite>dup</cite> operation (usage: dup or dup0, dup1, dup2, …, duptop) duplicates a value on the stack and pushes the duplicate onto the stack.</p>
+<p>The <cite>dup</cite> operation (usage: dup or dup0, dup1, dup2, …) duplicates a value on the stack and pushes the duplicate onto the stack.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4 dup =&gt; 4 4
 5 3 2 4 dup3 =&gt; 5 3 2 4 5
@@ -124,7 +125,7 @@
 </section>
 <section id="swap">
 <h2><strong>swap</strong><a class="headerlink" href="#swap" title="Link to this heading"></a></h2>
-<p>The <cite>swap</cite> operation (usage same as dup: swap0 do nothing, swap or swap1, swap2, swap3 …, swaptop) swaps the positions of the first value on the stack with another specified (default 1).</p>
+<p>The <cite>swap</cite> operation (usage same as dup: swap0 do nothing, swap or swap1, swap2, swap3 …) swaps the positions of the first value on the stack with another specified (default 1).</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>5 3 swap =&gt; 3 5
 
@@ -166,6 +167,7 @@
 <h2><strong>quote</strong><a class="headerlink" href="#quote" title="Link to this heading"></a></h2>
 <p>The <cite>quote</cite> operation quotes the first value on the stack.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2 7 4 5 1 3 quote =&gt; 2 7 4 5 1 [3]
+[swap /] quote =&gt; [[swap /]]
 </pre></div>
 </div>
 </section>
@@ -178,7 +180,6 @@
 <ul class="simple">
 <li><p><cite>last</cite>: A boolean value indicating whether the current value is the last pushed onto the stack.</p></li>
 <li><p><cite>empty</cite>: A boolean value indicating whether the stack is empty.</p></li>
-<li><p><cite>maxsize</cite>: The maximum size of the stack.</p></li>
 <li><p><cite>size</cite>: The current size of the stack. When executed, it pushes the size onto the stack.</p></li>
 </ul>
 </section>

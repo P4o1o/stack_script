@@ -1,0 +1,45 @@
+Code Examples
+=============
+
+
+Example 1
+---------
+
+We want to define an instruction that fill the stack with a value `value`, many times as going from the value `from` to the value `to`.
+We can do it in different ways:
+
+Here we define the instruction an give to it the desired values by defining also them as instructions
+
+.. code-block:: text
+
+    [from [value swap(size 1 -) 1 + dup to < swap swap(size 1 -) swap] loop swap(size 1 -) drop] define(fill)
+
+    [0] define(from) [10] define(to) [3.1415926535897932] define(value)
+
+    fill
+
+Alternatively we assume that the values are in the stack in this order: `from to value`
+
+.. code-block:: text
+
+    [[swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap] swap3 quote compose swap quote swap2 compose compose loop swap(size 1 -) drop] define(fill)
+
+    0 10 3.1415926535897932
+
+    fill
+
+Here are the steps to convert the first way in the second
+
+.. code-block:: text
+
+    from to value [swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap]
+
+    swap3 quote compose => from [< swap swap(size 1 -) swap] value [swap(size 1 -) 1 + dup to]
+
+    swap quote swap2 compose => from [value] [swap(size 1 -) 1 + dup to < swap swap(size 1 -) swap]
+
+    compose => from [value swap(size 1 -) 1 + dup to < swap swap(size 1 -) swap]
+
+    from to value [swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap] swap3 quote compose swap quote swap2 compose compose loop swap(size 1 -) drop => that's our fill instruction!
+
+    [[swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap] swap3 quote compose swap quote swap2 compose compose loop swap(size 1 -) drop] define(fill)
