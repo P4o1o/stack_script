@@ -1,0 +1,6 @@
+
+[[quote] dip compose] define(cons)
+
+[dup swap2 quote dup dig2 compose [compose] dip swap] define(cake)
+
+[swap quote compose] define(take)
