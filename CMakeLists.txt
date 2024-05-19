@@ -11,4 +11,4 @@ add_executable(sscript
         src/environment.c
         src/programstate.h
         src/interpreter.h
-        src/environment.h)
+        src/environment.h "src/buildutils.c" "src/buildutils.h")

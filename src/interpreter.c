@@ -12,20 +12,10 @@ const char *BOOL[] = {
         "false"
 };
 
-const char *INSTRUCTIONS[] = {
-        "",
-        "if","apply","printall","<=","dup",
-        "not","swap","+", ">=","compose",
-        "exit","loop","pow","size","try",
-        "%","/",">","and","clear",
-        "drop","empty","extract","int","nop",
-        "or","print","quote","sqrt","top",
-        "xor","!=","*","-","<",
-        "==",
-};
+
 
 const char *NUMBERED_INSTR[] = {
-        "dup", "swap",
+        "dup", "swap", "dig"
 };
 
 const char *BRACKETS_INSTR[] = {
@@ -37,6 +27,18 @@ const char *BRACKETS_INSTR[] = {
 
 const char BR_CLOSE = ')';
 
+const char* INSTRUCTIONS[] = {
+        "",
+        "int", "clear", "quote", "<=", "dup",
+        "or", "swap", "+", "and", "dip",
+        "exit", "nop", "print", "size", "try",
+        "%", "/", ">", "apply", "compose",
+        "drop", "empty", "if", "loop", "not",
+        "pow", "printall", "roll", "sqrt", "top",
+        "xor", "!=", "*", "-", "<",
+        "==", ">=",
+};
+
 typedef void (*operations)(struct ProgramState *, struct ExceptionHandler *);
 
 typedef void (*br_operations)(struct ProgramState *, char *, size_t, struct ExceptionHandler *);
@@ -44,14 +46,14 @@ typedef void (*br_operations)(struct ProgramState *, char *, size_t, struct Exce
 typedef void (*num_operations)(struct ProgramState *, size_t, struct ExceptionHandler *);
 
 const operations INSTR_OP[] ={
-        op_if, op_apply, op_printall, op_lowereq, op_dup,
-        op_not, op_swap, op_sum, op_greathereq, op_compose,
-        op_exit, op_loop, op_pow, op_size, op_try,
-        op_mod, op_div, op_greather, op_and, op_clear,
-        op_drop, op_empty, op_nop, op_int, op_nop,
-        op_or, op_print, op_quote,op_sqrt, op_top,
+        op_int, op_clear, op_quote, op_lowereq, op_dup,
+        op_or, op_swap, op_sum, op_and, op_dip,
+        op_exit, op_nop, op_print, op_size, op_try,
+        op_mod, op_div, op_greather, op_apply, op_compose,
+        op_drop, op_empty, op_if, op_loop, op_not,
+        op_pow, op_printall, op_roll, op_sqrt, op_top,
         op_xor, op_notequal, op_mul, op_sub, op_lower,
-        op_equal,
+        op_equal, op_greathereq
 };
 
 br_operations BR_INSTR_OP[] ={
@@ -61,7 +63,7 @@ br_operations BR_INSTR_OP[] ={
 };
 
 num_operations NUM_INSTR_OP[] = {
-        numop_dup, numop_swap
+        numop_dup, numop_swap, numop_dig
 };
 
 static inline void push_Stack(struct Stack *stack, const struct StackElem val, struct ExceptionHandler *jbuff){
@@ -224,8 +226,8 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         }
         int minor = order < 0;
         index = 2 * index + minor;
-    }while (index < 37);
-    for(short i = 0; i < 2; i++){
+    }while (index < 38);
+    for(short i = 0; i < 3; i++){
         size_t nilen = strlen(NUMBERED_INSTR[i]);
         if(strncmp(NUMBERED_INSTR[i], instr, nilen) == 0){
             size_t number = strtol(instr + nilen, &endptr, 10);
@@ -416,6 +418,61 @@ void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct 
     if(fclose(target) != 0)
         RAISE(jbuff, IOError);
 }
+
+
+
+void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    struct StackElem temp = state->stack.content[state->stack.next - 1 * (state->stack.next != 0)];
+    for (size_t i = 1; i < state->stack.next; i++) {
+        state->stack.content[i] = state->stack.content[i - 1];
+    }
+    state->stack.content[0] = temp;
+}
+
+void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if (state->stack.next < 2)
+        RAISE(jbuff, StackUnderflow);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type != Instruction) {
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    if (try_buf == NULL) {
+        state->stack.next += 1;
+        RAISE(jbuff, ProgramPanic);
+    }
+    char* mem = state->stack.content[state->stack.next].val.instr;
+    state->stack.next -= 1;
+    struct StackElem temp = state->stack.content[state->stack.next];
+    TRY(try_buf) {
+        parse_script(state, mem, strlen(mem), try_buf);
+    }CATCHALL{
+        free(mem);
+        uint32_t err = try_buf->exit_value;
+        free(try_buf);
+        push_Stack(&state->stack, temp, jbuff);
+        RAISE(jbuff, err);
+    }
+    free(mem);
+    free(try_buf);
+    push_Stack(&state->stack, temp, jbuff);
+}
+
+void numop_dig(struct ProgramState* state, size_t num, struct ExceptionHandler* jbuff){
+    if (state->stack.next < num) {
+        RAISE(jbuff, StackUnderflow);
+    }
+    size_t index = state->stack.next - 1;
+    size_t indextar = state->stack.next - 1 - num;
+    struct StackElem temp = state->stack.content[indextar];
+    for (size_t i = indextar; i < index; i++) {
+        state->stack.content[i] = state->stack.content[i + 1];
+    }
+    state->stack.content[index] = temp;
+}
+
+
 
 void op_if(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack.next < 3)

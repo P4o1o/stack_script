@@ -25,6 +25,8 @@ void op_clear(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_exit(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_nop(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff);
+void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_top(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_sum(struct ProgramState *state, struct ExceptionHandler *jbuff);
@@ -50,6 +52,7 @@ void op_lowereq(struct ProgramState *state, struct ExceptionHandler *jbuff);
 
 void numop_dup(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff);
 void numop_swap(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff);
+void numop_dig(struct ProgramState* state, size_t num, struct ExceptionHandler* jbuff);
 
 void brop_if(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
 void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
