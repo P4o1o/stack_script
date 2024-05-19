@@ -4,3 +4,9 @@
 [dup swap2 quote dup dig2 compose [compose] dip swap] define(cake)
 
 [swap quote compose] define(take)
+
+[swap dup swap2 dip] define(sip)
+
+[swap2 quote swap compose swap dip] define(s)
+
+[swap drop apply] define(k)
