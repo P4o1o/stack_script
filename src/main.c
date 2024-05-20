@@ -6,7 +6,7 @@
 int main() {
     struct ProgramState state = init_PrgState(256, 256);
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
-    char* bufferin[BUFFERSIZE];
+    char bufferin[BUFFERSIZE];
     while(1){
         printf(">");
         fflush(stdout);

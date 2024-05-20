@@ -358,6 +358,8 @@ void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct 
         return;
     }
     char *fcontent = malloc(flen + 1);
+    if (fcontent == NULL)
+        RAISE(jbuff, ProgramPanic);
     rewind(target);
     size_t comandlen = fread(fcontent, 1, flen, target);
     if(comandlen == 0 || fclose(target) != 0)
