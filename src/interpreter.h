@@ -14,21 +14,26 @@ extern const char *BRACKETS_INSTR[];
 
 void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_notequal(struct ProgramState *state, struct ExceptionHandler *jbuff);
+
 void op_dup(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_swap(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_drop(struct ProgramState *state, struct ExceptionHandler *jbuff);
+void op_size(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_empty(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_clear(struct ProgramState* state, struct ExceptionHandler* jbuff);
+
 void op_print(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_printall(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_size(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_empty(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_clear(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_exit(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_nop(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff);
+void op_apply(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
-void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_top(struct ProgramState *state, struct ExceptionHandler *jbuff);
+void op_compose(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_top(struct ProgramState* state, struct ExceptionHandler* jbuff);
+
+void op_exit(struct ProgramState *state, struct ExceptionHandler *jbuff);
+
+void op_nop(struct ProgramState *state, struct ExceptionHandler *jbuff);
+
 void op_sum(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_mul(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_sub(struct ProgramState *state, struct ExceptionHandler *jbuff);

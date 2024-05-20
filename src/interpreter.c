@@ -422,8 +422,11 @@ void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct 
 
 
 void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    struct StackElem temp = state->stack.content[state->stack.next - 1 * (state->stack.next != 0)];
-    for (size_t i = 1; i < state->stack.next; i++) {
+    if (state->stack.next == 0) {
+        return;
+    }
+    struct StackElem temp = state->stack.content[state->stack.next - 1];
+    for (size_t i = state->stack.next - 1; i > 0 ; i--) {
         state->stack.content[i] = state->stack.content[i - 1];
     }
     state->stack.content[0] = temp;
@@ -1174,14 +1177,16 @@ void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff){
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
+    size_t lensecond = strlen(state->stack.content[state->stack.next].val.instr);
     size_t lenfirst =  strlen(state->stack.content[state->stack.next - 1].val.instr);
-    state->stack.content[state->stack.next - 1].val.instr = realloc(state->stack.content[state->stack.next - 1].val.instr, strlen(state->stack.content[state->stack.next].val.instr) + lenfirst + 2);
+    state->stack.content[state->stack.next - 1].val.instr = realloc(state->stack.content[state->stack.next - 1].val.instr, lensecond + lenfirst + 2);
     if(state->stack.content[state->stack.next - 1].val.instr == NULL){
         RAISE(jbuff, ProgramPanic);
     }
     state->stack.content[state->stack.next - 1].val.instr[lenfirst] = ' ';
     strcpy(state->stack.content[state->stack.next - 1].val.instr + lenfirst + 1, state->stack.content[state->stack.next].val.instr);
     free(state->stack.content[state->stack.next].val.instr);
+    state->stack.content[state->stack.next - 1].val.instr[lensecond + lenfirst + 1] = '\0';
 }
 
 void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff){
@@ -1310,7 +1315,14 @@ void op_dup(struct ProgramState *state, struct ExceptionHandler *jbuff){
         RAISE(jbuff, StackUnderflow);
     struct StackElem copy;
     copy.type = state->stack.content[state->stack.next - 1].type;
-    copy.val = state->stack.content[state->stack.next - 1].val;
+    if (copy.type == Instruction) {
+        size_t srclen = strlen(state->stack.content[state->stack.next - 1].val.instr) + 1;
+        copy.val.instr = malloc(srclen);
+        memcpy(copy.val.instr, state->stack.content[state->stack.next - 1].val.instr, srclen);
+    }
+    else {
+        copy.val = state->stack.content[state->stack.next - 1].val;
+    }
     push_Stack(&state->stack, copy, jbuff);
 }
 
@@ -1340,7 +1352,14 @@ void numop_dup(struct ProgramState *state, size_t num, struct ExceptionHandler *
     struct StackElem copy;
     size_t index = state->stack.next - 1 - num;
     copy.type = state->stack.content[index].type;
-    copy.val = state->stack.content[index].val;
+    if (copy.type == Instruction) {
+        size_t srclen = strlen(state->stack.content[index].val.instr) + 1;
+        copy.val.instr = malloc(srclen);
+        memcpy(copy.val.instr, state->stack.content[index].val.instr, srclen);
+    }
+    else {
+        copy.val = state->stack.content[index].val;
+    }
     push_Stack(&state->stack, copy, jbuff);
 }
 
@@ -1366,7 +1385,14 @@ void brop_dup(struct ProgramState *state, char *comand, size_t clen, struct Exce
         struct StackElem copy;
         size_t index = state->stack.next - 1 - state->stack.content[state->stack.next].val.ival;
         copy.type = state->stack.content[index].type;
-        copy.val = state->stack.content[index].val;
+        if (copy.type == Instruction) {
+            size_t srclen = strlen(state->stack.content[index].val.instr) + 1;
+            copy.val.instr = malloc(srclen);
+            memcpy(copy.val.instr, state->stack.content[index].val.instr, srclen);
+        }
+        else {
+            copy.val = state->stack.content[index].val;
+        }
         push_Stack(&state->stack, copy, jbuff);
     }else{
         state->stack.next += 1;
