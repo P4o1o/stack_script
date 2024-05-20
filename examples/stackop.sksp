@@ -1,12 +1,12 @@
 
 [[quote] dip compose] define(cons)
 
-[dup swap2 quote dup dig2 compose [compose] dip swap] define(cake)
-
 [swap quote compose] define(take)
 
-[swap dup swap2 dip] define(sip)
+[[dup] dip dip] define(sip)
 
-[swap2 quote swap compose swap dip] define(s)
+[dip drop] define(k)
 
-[swap drop apply] define(k)
+[[quote dup] dip dup dig2 compose [compose] dip] define(cake)
+
+[[[quote dup] dip compose quote compose] dip] define(s)
