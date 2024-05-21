@@ -5,15 +5,28 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-int print_usage() {
-    printf("\nUsage: sscript [-options] [File to load before start]\tfields are optional\n\n" \
+void print_usage() {
+    printf("\nUsage: sscript [-options] [File to load before the shell starts]\n\n" \
         "doucumentation available at https://p4o1o.github.io/stack_script/\n" \
         "options:\n" \
-        "- v\t print the last element of the stack after every input.\n" \
-        "- v<size>\t print the last <size> element of the stack after every input.\n" \
-        "- h\t print this message.\n\n");
-    return -1;
+        "-v\t print the last element of the stack after every input.\n" \
+        "-v<size>\t print the last <size> element of the stack after every input.\n" \
+        "-h\t print this message.\n\n" \
+        "-m load the math library before the shell starts" \
+        "-s load the stack operations library before the shell starts"
+    );
 }
+
+void load_file(struct ProgramState* state, char* filepath) {
+    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    TRY(try_buf) {
+        brop_load(state, filepath, strlen(filepath), try_buf);
+    }CATCHALL{
+        printf("Exception number %d while loading file %s\n", try_buf->exit_value, filepath);
+        exit(try_buf->exit_value);
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     struct ProgramState state = init_PrgState(256, 256);
@@ -21,7 +34,6 @@ int main(int argc, char *argv[]) {
     if (try_buf == NULL)
         return -1;
     size_t size = 0;
-    char* file_toload;
     if (argc > 1) {
         if (argv[1][0] == '-') {
             size_t i = 1;
@@ -43,38 +55,29 @@ int main(int argc, char *argv[]) {
                     print_usage();
                     return 0;
                 }
+                else if (argv[1][i] == 'm') {
+                    load_file(&state, "math.sksp");
+                }
+                else if (argv[1][i] == 's') {
+                    load_file(&state, "stackop.sksp");
+                }
                 else {
                     print_usage();
                     return 1;
                 }
             }
-
-            if (argc == 3) {
-                file_toload = argv[2];
-            }
-            else if (argc == 2) {
-                goto StartShell;
-            }
-            else {
-                print_usage();
-                return 1;
+            if (argc >  2) {
+                load_file(&state, argv[2]);
             }
         }
         else {
             if (argc > 2) {
                 print_usage();
-                return 1;
+                return -1;
             }
-            file_toload = argv[1];
-        }
-        TRY(try_buf) {
-            brop_load(&state, file_toload, strlen(argv[1]), try_buf);
-        }CATCHALL{
-            printf("Exception number %d while loading file %s\n", try_buf->exit_value, argv[1]);
-            return;
+            load_file(&state, argv[1]);
         }
     }
-StartShell:
     char bufferin[BUFFERSIZE];
     while(1){
         printf(">");
