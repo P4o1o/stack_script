@@ -24,6 +24,7 @@ void op_clear(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_print(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_printall(struct ProgramState *state, struct ExceptionHandler *jbuff);
+
 void op_apply(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
@@ -72,5 +73,6 @@ void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struc
 void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff);
 void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff);
 void execute(struct ProgramState *state, char *comands, struct ExceptionHandler *jbuff);
+void print_stack(struct ProgramState* state, size_t num_elem);
 
 #endif //SSCRIPT_INTERPRETER_H

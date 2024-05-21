@@ -313,6 +313,12 @@ void execute(struct ProgramState *state, char *comands, struct ExceptionHandler 
     parse_script(state, comands, strlen(comands), jbuff);
 }
 
+void print_stack(struct ProgramState* state, size_t num_elem) {
+    for (size_t i = num_elem; i > 0; i--) {
+        print_single(&state->stack, i);
+    }
+}
+
 //------------------------------------------------------------------------------------------------------
 
 
@@ -1181,10 +1187,11 @@ void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff){
     }
     size_t lensecond = strlen(state->stack.content[state->stack.next].val.instr);
     size_t lenfirst =  strlen(state->stack.content[state->stack.next - 1].val.instr);
-    state->stack.content[state->stack.next - 1].val.instr = realloc(state->stack.content[state->stack.next - 1].val.instr, lensecond + lenfirst + 2);
-    if(state->stack.content[state->stack.next - 1].val.instr == NULL){
+    char *composte = realloc(state->stack.content[state->stack.next - 1].val.instr, lensecond + lenfirst + 2);
+    if(composte == NULL){
         RAISE(jbuff, ProgramPanic);
     }
+    state->stack.content[state->stack.next - 1].val.instr = composte;
     state->stack.content[state->stack.next - 1].val.instr[lenfirst] = ' ';
     strcpy(state->stack.content[state->stack.next - 1].val.instr + lenfirst + 1, state->stack.content[state->stack.next].val.instr);
     free(state->stack.content[state->stack.next].val.instr);
@@ -1320,6 +1327,8 @@ void op_dup(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if (copy.type == Instruction) {
         size_t srclen = strlen(state->stack.content[state->stack.next - 1].val.instr) + 1;
         copy.val.instr = malloc(srclen);
+        if (copy.val.instr == NULL)
+            RAISE(jbuff, ProgramPanic);
         memcpy(copy.val.instr, state->stack.content[state->stack.next - 1].val.instr, srclen);
     }
     else {
@@ -1357,6 +1366,8 @@ void numop_dup(struct ProgramState *state, size_t num, struct ExceptionHandler *
     if (copy.type == Instruction) {
         size_t srclen = strlen(state->stack.content[index].val.instr) + 1;
         copy.val.instr = malloc(srclen);
+        if (copy.val.instr == NULL)
+            RAISE(jbuff, ProgramPanic);
         memcpy(copy.val.instr, state->stack.content[index].val.instr, srclen);
     }
     else {
