@@ -1,0 +1,9 @@
+
+[3.1415926535897932384626433832795] define(pi)
+
+[2.7182818284590452353602874713527] define(e)
+
+[dup [ 1 - dup [*] dip] loop(dup 1 >) drop] define(factorial)
+
+[[2.7182818284590452353602874713527] dip pow] define(exp)
+

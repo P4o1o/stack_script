@@ -37,6 +37,12 @@ struct ProgramState{
     struct Environment env;
 };
 
+typedef void (*operations)(struct ProgramState*, struct ExceptionHandler*);
+
+typedef void (*br_operations)(struct ProgramState*, char*, size_t, struct ExceptionHandler*);
+
+typedef void (*num_operations)(struct ProgramState*, size_t, struct ExceptionHandler*);
+
 struct ProgramState init_PrgState(size_t stack_capacity, size_t env_capacity);
 void free_PrgState(struct ProgramState *inter);
 

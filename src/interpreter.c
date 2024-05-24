@@ -12,8 +12,6 @@ const char *BOOL[] = {
         "false"
 };
 
-
-
 const char *NUMBERED_INSTR[] = {
         "dup", "swap", "dig"
 };
@@ -38,12 +36,6 @@ const char* INSTRUCTIONS[] = {
         "xor", "!=", "*", "-", "<",
         "==", ">=",
 };
-
-typedef void (*operations)(struct ProgramState *, struct ExceptionHandler *);
-
-typedef void (*br_operations)(struct ProgramState *, char *, size_t, struct ExceptionHandler *);
-
-typedef void (*num_operations)(struct ProgramState *, size_t, struct ExceptionHandler *);
 
 const operations INSTR_OP[] ={
         op_int, op_clear, op_quote, op_lowereq, op_dup,

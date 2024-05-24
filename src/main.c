@@ -6,14 +6,16 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 void print_usage() {
-    printf("\nUsage: sscript [-options] [File to load before the shell starts]\n\n" \
-        "doucumentation available at https://p4o1o.github.io/stack_script/\n" \
-        "options:\n" \
-        "-v\t print the last element of the stack after every input.\n" \
-        "-v<size>\t print the last <size> element of the stack after every input.\n" \
-        "-h\t print this message.\n\n" \
-        "-m load the math library before the shell starts" \
-        "-s load the stack operations library before the shell starts"
+    printf("\nUsage:\n\tsscript [-options] [File to load before the shell starts]\n" \
+        "\targs are optionals:\n\n" \
+        "doucumentation available at https://p4o1o.github.io/stack_script/\n\n" \
+        "options must be in this format: -v, -sv2m -sv, ... (the order doesen't matter)\n" \
+        "options available:\n" \
+        "\t-v\t print the last element of the stack after every input.\n" \
+        "\t-v<size>\t print the last <size> element of the stack after every input.\n" \
+        "\t-h\t print this message.\n" \
+        "\t-m load the math library before the shell starts\n" \
+        "\t-s load the stack operations library before the shell starts\n\n"
     );
 }
 
@@ -21,8 +23,12 @@ void load_file(struct ProgramState* state, char* filepath) {
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
     TRY(try_buf) {
         brop_load(state, filepath, strlen(filepath), try_buf);
+        free(try_buf);
+        free_PrgState(state);
     }CATCHALL{
         printf("Exception number %d while loading file %s\n", try_buf->exit_value, filepath);
+        free(try_buf);
+        free_PrgState(state);
         exit(try_buf->exit_value);
     }
 }

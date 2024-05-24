@@ -11,3 +11,10 @@
 
 [[[quote dup] dip compose quote compose] dip] define(s)
 
+
+[swap dig2 dup dig2 cons swap dig2 apply] define(Slambda)
+[swap drop apply] define(Klambda)
+
+
+[drop] define(zero)
+[quote [apply] compose [[dup]] swap dup [[compose]] swap [apply] compose compose compose compose] define(inc)
