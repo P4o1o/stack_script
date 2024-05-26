@@ -23,7 +23,7 @@ void print_usage() {
 void load_file(struct ProgramState* state, char* filepath) {
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
     if (try_buf == NULL)
-        return -1;
+        exit(-1);
     TRY(try_buf) {
         brop_load(state, filepath, strlen(filepath), try_buf);
         free(try_buf);
