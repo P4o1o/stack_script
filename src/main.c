@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "interpreter.h"
 #include "buildutils.h"
 #define BUFFERSIZE 256
@@ -21,10 +22,11 @@ void print_usage() {
 
 void load_file(struct ProgramState* state, char* filepath) {
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    if (try_buf == NULL)
+        return -1;
     TRY(try_buf) {
         brop_load(state, filepath, strlen(filepath), try_buf);
         free(try_buf);
-        free_PrgState(state);
     }CATCHALL{
         printf("Exception number %d while loading file %s\n", try_buf->exit_value, filepath);
         free(try_buf);

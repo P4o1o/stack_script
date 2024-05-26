@@ -141,9 +141,9 @@ static inline void print_single(struct Stack *stack, size_t num){
     if(stack->content[stack->next - num].type == Instruction) {
         printf("[ %s ]\n", stack->content[stack->next - num].val.instr);
     }else if(stack->content[stack->next - num].type == Integer) {
-        printf("%lld\n", stack->content[stack->next - num].val.ival);
+        printf("%ld\n", stack->content[stack->next - num].val.ival);
     }else if(stack->content[stack->next - num].type == Floating) {
-        printf("%f\n", stack->content[stack->next - num].val.fval);
+        printf("%lf\n", stack->content[stack->next - num].val.fval);
     }else if(stack->content[stack->next - num].type == BoolTrue) {
         printf("%s\n", BOOL[0]);
     }else if(stack->content[stack->next - num].type == BoolFalse) {
@@ -230,6 +230,8 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         }
     }
     char **funct = malloc(sizeof(char *));
+    if (funct == NULL)
+        RAISE(jbuff, ProgramPanic);
     if(get_Environment(&state->env, instr, instrlen, funct) == 1){
         char *text = *funct;
         free(funct);
@@ -394,7 +396,7 @@ void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct 
                 RAISE(jbuff, IOError);
             }
         }else if(state->stack.content[i].type == Integer){
-            if(fprintf(target, "%lld ", state->stack.content[i].val.ival) < 0){
+            if(fprintf(target, "%ld ", state->stack.content[i].val.ival) < 0){
                 fclose(target);
                 RAISE(jbuff, IOError);
             }
@@ -917,13 +919,13 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
         if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            snprintf(resstr, result + 1, "%lld", state->stack.content[resindex].val.ival);
+            snprintf(resstr, result + 1, "%ld", state->stack.content[resindex].val.ival);
             state->stack.content[resindex].val.instr = resstr;
             state->stack.content[resindex].type = Instruction;
         }
     }else if(state->stack.content[resindex].type == Floating) {
         char buffer[1];
-        int result = snprintf(buffer, 1, "%f", state->stack.content[resindex].val.fval);
+        int result = snprintf(buffer, 1, "%lf", state->stack.content[resindex].val.fval);
         if (result < 1) {
             RAISE(jbuff, ProgramPanic);
         } else {
@@ -931,7 +933,7 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
             if (resstr == NULL) {
                 RAISE(jbuff, ProgramPanic);
             } else {
-                snprintf(resstr, result + 1, "%f", state->stack.content[resindex].val.fval);
+                snprintf(resstr, result + 1, "%lf", state->stack.content[resindex].val.fval);
                 resstr[result] ='\0';
                 state->stack.content[resindex].val.instr = resstr;
                 state->stack.content[resindex].type = Instruction;
