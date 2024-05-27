@@ -22,16 +22,17 @@ void print_usage() {
 
 void load_file(struct ProgramState* state, char* filepath) {
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    try_buf->not_exec = filepath;
     if (try_buf == NULL)
         exit(-1);
     TRY(try_buf) {
         brop_load(state, filepath, strlen(filepath), try_buf);
         free(try_buf);
     }CATCHALL{
-        printf("Exception number %d while loading file %s\n", try_buf->exit_value, filepath);
+        print_Exception(try_buf);
         free(try_buf);
         free_PrgState(state);
-        exit(try_buf->exit_value);
+        exit(-1);
     }
 }
 
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
                     print_usage();
                     return 1;
                 }
+                i++;
             }
             if (argc >  2) {
                 load_file(&state, argv[2]);
@@ -97,10 +99,10 @@ int main(int argc, char *argv[]) {
         }CATCH(try_buf, ProgramExit) {
             break;
         }CATCHALL{
-            printf("Exception number %d\n", try_buf->exit_value);
+            print_Exception(try_buf);
         }
         size_t elem_to_print = MIN(size, state.stack.next);
-        print_stack(&state, size);
+        print_stack(&state, elem_to_print);
     }
     free(try_buf);
     free_PrgState(&state);

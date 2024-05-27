@@ -64,3 +64,42 @@ void free_PrgState(struct ProgramState *inter){
     free_Stack(inter->stack);
     free_Environment(inter->env);
 }
+
+void print_Exception(struct ExceptionHandler *exc) {
+    char *excstr;
+    switch(exc->exit_value){
+        case ProgramPanic:
+            excstr = "Error while allocating memory";
+            break;
+        case InvalidChar:
+            excstr = "Invalid character";
+            break;
+        case InvalidInstruction:
+            excstr = "Invalid instruction";
+            break;
+        case InvalidOperands:
+            excstr = "Invalid operands";
+            break;
+        case ParenthesisError:
+            excstr = "Parenthesis number mismatch";
+            break;
+        case StackUnderflow:
+            excstr = "Stack underflow";
+            break;
+        case ValueError:
+            excstr = "Value Error";
+            break;
+        case IOError:
+            excstr = "I/O Error";
+            break;
+        case FileNotFound:
+            excstr = "File not found";
+            break;
+        case FileNotCreatable:
+            excstr = "File not creatable";
+            break;
+        default:
+            excstr = "";
+    }
+    printf("%s not executed: %12s\n", excstr, exc->not_exec);
+}

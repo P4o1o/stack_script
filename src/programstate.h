@@ -12,6 +12,7 @@
 struct ExceptionHandler{
     jmp_buf buffer;
     uint32_t exit_value;
+    char *not_exec;
 };
 
 #define TRY(EXCHANDLER) if ((EXCHANDLER->exit_value = setjmp(EXCHANDLER->buffer)) == 0)
@@ -31,6 +32,8 @@ struct ExceptionHandler{
 #define IOError 9
 #define FileNotFound 10
 #define FileNotCreatable 11
+
+void print_Exception(struct ExceptionHandler* exc);
 
 struct ProgramState{
     struct Stack stack;

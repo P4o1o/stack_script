@@ -153,6 +153,7 @@ static inline void print_single(struct Stack *stack, size_t num){
 //------------------------------------------------------------------------------------------------------
 
 void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
+    jbuff->not_exec = instr;
     if(instr[0] == '[' && instr[instrlen - 1] == ']'){
         struct StackElem elem;
         elem.type = Instruction;
@@ -365,7 +366,7 @@ void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct 
     if(comandlen == 0 || fclose(target) != 0)
         RAISE(jbuff, IOError);
     fcontent[comandlen] = '\0';
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler *));
+    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
     if(try_buf == NULL)
         RAISE(jbuff, ProgramPanic);
     TRY(try_buf){
