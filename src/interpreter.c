@@ -349,6 +349,7 @@ void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct 
     strncpy(path, filename, fnlen);
     path[fnlen] = '\0';
     FILE *target = fopen(path, "r");
+    free(path);
     if(target == NULL)
         RAISE(jbuff, FileNotFound);
     fseek(target, 0, SEEK_END);
