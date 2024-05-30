@@ -9,12 +9,4 @@
 
 [[quote dup] dip dup dig2 compose [compose] dip] define(cake)
 
-[[[quote dup] dip compose quote compose] dip] define(s)
-
-
-[swap dig2 dup dig2 cons swap dig2 apply] define(Slambda)
-[swap drop apply] define(Klambda)
-
-
-[drop] define(zero)
-[quote [apply] compose [[dup]] swap dup [[compose]] swap [apply] compose compose compose compose] define(inc)
+[quote [dip] compose dip dup1 [[quote] dip compose] dip] define(s)
