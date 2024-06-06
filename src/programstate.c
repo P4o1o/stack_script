@@ -35,18 +35,13 @@ static inline struct Environment init_Environment(size_t capacity){
 
 static inline void free_Environment(struct Environment env){
     for (size_t i = 0; i < env.capacity; i++) {
-        if(env.content[i] != NULL){
-            free(env.content[i]->key);
-            free(env.content[i]->value);
-            struct EnvElem *elem = env.content[i]->next;
-            free(env.content[i]);
-            while(elem != NULL){
-                struct EnvElem *temp = elem->next;
-                free(elem->key);
-                free(elem->value);
-                free(elem);
-                elem = temp;
-            }
+        struct EnvElem *elem = env.content[i];
+        while(elem != NULL){
+            struct EnvElem *temp = elem->next;
+            free(elem->key);
+            free(elem->value);
+            free(elem);
+            elem = temp;
         }
     }
     free(env.content);

@@ -28,24 +28,41 @@ uint64_t SipHash_2_4(const uint64_t keytop, const uint64_t keybottom, const char
     uint64_t v1 = keytop ^ 0x646f72616e646f6dULL;
     uint64_t v2 = keybottom ^ 0x6c7967656e657261ULL;
     uint64_t v3 = keytop ^ 0x7465646279746573ULL;
-    size_t wordsize = (size_t) ceil(((double)len + 1.0)/ 8.0);
-    for(int i = 0; i < wordsize - 1; i++){
-        uint64_t mess_i = ((uint64_t)message[i] << 56)
-                          | ((uint64_t)message[i + 1] << 48)
-                          | ((uint64_t)message[i + 2] << 40)
-                          | ((uint64_t)message[i + 3] << 32)
-                          | ((uint64_t)message[i + 4] << 24)
-                          | ((uint64_t)message[i + 5] << 16)
-                          | ((uint64_t)message[i + 6] << 8)
-                          | ((uint64_t)message[i + 7]);
+    size_t lenlast = len & 7;
+    char* end = message + (len - lenlast);
+    for (; message != end; message + 8) {
+        uint64_t mess_i = ((uint64_t)message[7] << 56)
+            | ((uint64_t)message[6] << 48)
+            | ((uint64_t)message[5] << 40)
+            | ((uint64_t)message[4] << 32)
+            | ((uint64_t)message[3] << 24)
+            | ((uint64_t)message[2] << 16)
+            | ((uint64_t)message[1] << 8)
+            | ((uint64_t)message[0]);
         v3 ^= mess_i;
         SIPROUND
-        SIPROUND
-        v0 ^= mess_i;
+            SIPROUND
+            v0 ^= mess_i;
     }
-    uint64_t mess_last = ((uint64_t) (len % 256)) << 56;
-    for(int index = 0; index < len % 8; index++) {
-        mess_last |= ((uint64_t)message[index] << (index * 8));
+    uint64_t mess_last = ((uint64_t)(len & 255)) << 56;
+    switch (lenlast) {
+    case 7:
+        mess_last |= ((uint64_t)message[6] << 48);
+    case 6:
+        mess_last |= ((uint64_t)message[5] << 40);
+    case 5:
+        mess_last |= ((uint64_t)message[4] << 32);
+    case 4:
+        mess_last |= ((uint64_t)message[3] << 24);
+    case 3:
+        mess_last |= ((uint64_t)message[2] << 16);
+    case 2:
+        mess_last |= ((uint64_t)message[1] << 8);
+    case 1:
+        mess_last |= ((uint64_t)message[0]);
+        break;
+    case 0:
+        break;
     }
     v3 ^= mess_last;
     SIPROUND

@@ -1,4 +1,6 @@
 
+[swap quote compose apply] define(ddip) {defined dip   Speed to be tested with dip}
+
 [[quote] dip compose] define(cons)
 
 [swap quote compose] define(take)
@@ -10,3 +12,5 @@
 [[quote dup] dip dup dig2 compose [compose] dip] define(cake)
 
 [quote [dip] compose dip dup1 [[quote] dip compose] dip] define(s)
+
+[quote [cons] loop(size 1 !=)] define(compress)

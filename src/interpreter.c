@@ -76,11 +76,11 @@ static inline void push_Stack(struct Stack *stack, const struct StackElem val, s
 #define HASHKEY0 0x734bc7ed439782a3ULL
 #define HASHKEY1 0x542f7629b02ac4deULL
 
-static inline int set_Environment(struct Environment *env, char *key, size_t keylen, char *val, struct ExceptionHandler *jbuff){
-    size_t index = (size_t)(SipHash_2_4(HASHKEY0,HASHKEY1, key, keylen) % (uint64_t) env->capacity);
-    struct EnvElem *elem = env->content[index];
-    while(elem != NULL){
-        if(keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0){
+static inline int set_Environment(struct Environment* env, char* key, size_t keylen, char* val, struct ExceptionHandler* jbuff) {
+    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
+    struct EnvElem* elem = env->content[index];
+    while (elem != NULL) {
+        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
             free(elem->value);
             elem->value = val;
             return 1;
@@ -88,10 +88,10 @@ static inline int set_Environment(struct Environment *env, char *key, size_t key
         elem = elem->next;
     }
     elem = malloc(sizeof(struct EnvElem));
-    if(elem == NULL)
+    if (elem == NULL)
         RAISE(jbuff, ProgramPanic);
     elem->key = malloc(keylen + 1);
-    if(elem->key == NULL)
+    if (elem->key == NULL)
         RAISE(jbuff, ProgramPanic);
     strncpy(elem->key, key, keylen);
     elem->key[keylen] = '\0';
@@ -101,11 +101,11 @@ static inline int set_Environment(struct Environment *env, char *key, size_t key
     return 0;
 }
 
-static inline int get_Environment(struct Environment *env, const char *key, size_t keylen, char **out){
-    size_t index = (size_t)(SipHash_2_4(HASHKEY0,HASHKEY1, key, keylen) % (uint64_t) env->capacity);
-    struct EnvElem *elem = env->content[index];
-    while(elem != NULL){
-        if(keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0){
+static inline int get_Environment(struct Environment* env, const char* key, size_t keylen, char** out) {
+    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
+    struct EnvElem* elem = env->content[index];
+    while (elem != NULL) {
+        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
             *out = elem->value;
             return 1;
         }
@@ -114,24 +114,20 @@ static inline int get_Environment(struct Environment *env, const char *key, size
     return 0;
 }
 
-static inline int remove_Environment(struct Environment *env, const char *key, size_t keylen){
-    size_t index = (size_t)(SipHash_2_4(HASHKEY0,HASHKEY1, key, keylen) % (uint64_t) env->capacity);
-    struct EnvElem *elem = env->content[index];
-    struct EnvElem *prev = NULL;
-    while(elem != NULL) {
+static inline int remove_Environment(struct Environment* env, const char* key, size_t keylen) {
+    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
+    struct EnvElem** elem_ptr = &env->content[index];
+    struct EnvElem* elem = *elem_ptr;
+    while (elem != NULL) {
         if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
             free(elem->key);
             free(elem->value);
-            if(prev == NULL){
-                env->content[index] = elem->next;
-            }else{
-                prev->next = elem->next;
-            }
+            *elem_ptr = elem->next;
             free(elem);
             return 1;
         }
-        prev = elem;
-        elem = elem->next;
+        elem_ptr = &elem->next;
+        elem = *elem_ptr;
     }
     return 0;
 }
@@ -314,7 +310,45 @@ void print_stack(struct ProgramState* state, size_t num_elem) {
     }
 }
 
+
+
 //------------------------------------------------------------------------------------------------------
+
+
+void brop_times(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff) {
+    if (state->stack.next == 0)
+        RAISE(jbuff, StackUnderflow);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type != Instruction) {
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    if (try_buf == NULL) {
+        state->stack.next += 1;
+        RAISE(jbuff, ProgramPanic);
+    }
+    char* mem = state->stack.content[state->stack.next].val.instr;
+    TRY(try_buf) {
+        parse_script(state, number, numberlen, try_buf);
+        state->stack.next -= 1;
+        if (state->stack.content[state->stack.next].type != Integer) {
+            state->stack.next += 2;
+            RAISE(try_buf, InvalidOperands);
+        }
+        for (int i = 0; i < state->stack.content[state->stack.next].val.ival; i++) {
+            parse_script(state, mem, strlen(mem), try_buf);
+
+        }
+    }CATCHALL{
+        free(mem);
+        uint32_t exitval = try_buf->exit_value;
+        free(try_buf);
+        RAISE(jbuff, exitval);
+    }
+    free(mem);
+    free(try_buf);
+}
 
 
 void brop_isdef(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
