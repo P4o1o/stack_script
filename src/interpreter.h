@@ -29,7 +29,6 @@ struct BrOperationElem {
 };
 
 struct Builtins {
-	num_operations num_op[3];
 	struct OperationElem** op_map;
 	struct BrOperationElem** brop_map;
 };
