@@ -18,17 +18,15 @@ const char *NUMBERED_INSTR[] = {
 
 #define BRACKETS_SIZE 11
 const char *BRACKETS_INSTR[] = {
-        "",
-        "load(","if(","save(",
-        "delete(","isdef(","loop(",
-        "swap(","define(","dup(", "times(", "dig("
+        "load","if","save",
+        "delete","isdef","loop",
+        "swap","define","dup", "times", "dig"
 };
 
 const char BR_CLOSE = ')';
 
 #define INSTR_SIZE 39
 const char* INSTRUCTIONS[] = {
-        "",
         "int", "clear", "quote", "<=", "dup",
         "or", "swap", "+", "and", "dip",
         "exit", "nop", "print", "size", "try",
@@ -109,7 +107,7 @@ int init_builtins() {
         if (elem == NULL)
             return 0;
         elem->key = BRACKETS_INSTR[i];
-        elem->op = BR_INSTR_OP[i];
+        elem->brop = BR_INSTR_OP[i];
         elem->next = builtins.brop_map[index];
         builtins.brop_map[index] = elem;
     }
@@ -262,61 +260,54 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         elem.val.fval = floatval;
         push_Stack(&state->stack, elem, jbuff);
         return;
-    }else if(strncmp(BOOL[0], instr, instrlen) == 0){
-        struct StackElem elem;
-        elem.type = BoolTrue;
-        elem.val.instr = NULL;
-        push_Stack(&state->stack, elem, jbuff);
-        return;
-    }else if(strncmp(BOOL[1], instr, instrlen) == 0){
-        struct StackElem elem;
-        elem.type = BoolFalse;
-        elem.val.instr = NULL;
-        push_Stack(&state->stack, elem, jbuff);
-        return;
     }
     if(instr[instrlen - 1] == BR_CLOSE){
-        int index = 1;
-        do{
-            size_t brlen = strlen(BRACKETS_INSTR[index]);
-            int order = strncmp(BRACKETS_INSTR[index], instr, brlen);
-            if(order == 0){
-                BR_INSTR_OP[index - 1](state, instr + brlen, instrlen - brlen - 1, jbuff);
+        size_t br_index;
+        for(size_t i = 0; i < instrlen; i++)
+            if (instr[i] == '(') {
+                br_index = i;
+                goto found_open_br;
+            }
+        RAISE(jbuff, InvalidInstruction);
+    found_open_br:
+        size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
+        struct BrOperationElem* elem = builtins.brop_map[index];
+        while (elem != NULL) {
+            if (strncmp(instr, elem->key, br_index) == 0 && br_index == strlen(elem->key)) {
+                elem->brop(state, instr + (br_index + 1), instrlen - br_index - 2, jbuff);
                 return;
             }
-            int minor = order < 0;
-            index = 2 * index + minor;
-        }while (index < 10);
-    }
-    int index = 1;
-    do{
-        size_t definstr = strlen(INSTRUCTIONS[index]);
-        int order = strncmp(INSTRUCTIONS[index], instr, instrlen);
-        if(definstr == instrlen && order == 0){
-            INSTR_OP[index - 1](state, jbuff);
+            elem = elem->next;
+        }
+    }else {
+        size_t index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, instr, instrlen) & (OP_MAP_SIZE - 1));
+        struct OperationElem* elem = builtins.op_map[index];
+        while (elem != NULL) {
+            if (strncmp(instr, elem->key, instrlen) == 0 && instrlen == strlen(elem->key)) {
+                elem->op(state, jbuff);
+                return;
+            }
+            elem = elem->next;
+        }
+        for (short i = 0; i < 3; i++) {
+            size_t nilen = strlen(NUMBERED_INSTR[i]);
+            if (strncmp(NUMBERED_INSTR[i], instr, nilen) == 0) {
+                size_t number = strtol(instr + nilen, &endptr, 10);
+                if (endptr == (instr + instrlen) && errno != ERANGE) {
+                    NUM_INSTR_OP[i](state, number, jbuff);
+                    return;
+                }
+            }
+        }
+        char** funct = malloc(sizeof(char*));
+        if (funct == NULL)
+            RAISE(jbuff, ProgramPanic);
+        if (get_Environment(&state->env, instr, instrlen, funct) == 1) {
+            char* text = *funct;
+            free(funct);
+            parse_script(state, text, strlen(text), jbuff);
             return;
         }
-        int minor = order < 0;
-        index = 2 * index + minor;
-    }while (index < 38);
-    for(short i = 0; i < 3; i++){
-        size_t nilen = strlen(NUMBERED_INSTR[i]);
-        if(strncmp(NUMBERED_INSTR[i], instr, nilen) == 0){
-            size_t number = strtol(instr + nilen, &endptr, 10);
-            if(endptr == (instr + instrlen) && errno != ERANGE){
-                NUM_INSTR_OP[i](state, number, jbuff);
-                return;
-            }
-        }
-    }
-    char **funct = malloc(sizeof(char *));
-    if (funct == NULL)
-        RAISE(jbuff, ProgramPanic);
-    if(get_Environment(&state->env, instr, instrlen, funct) == 1){
-        char *text = *funct;
-        free(funct);
-        parse_script(state, text, strlen(text), jbuff);
-        return;
     }
     RAISE(jbuff, InvalidInstruction);
 }

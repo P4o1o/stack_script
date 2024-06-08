@@ -38,6 +38,8 @@ void load_file(struct ProgramState* state, char* filepath) {
 
 
 int main(int argc, char *argv[]) {
+    if (!init_builtins())
+        exit(-1);
     struct ProgramState state = init_PrgState(256, 256);
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
     if (try_buf == NULL)
@@ -89,7 +91,6 @@ int main(int argc, char *argv[]) {
         }
     }
     char bufferin[BUFFERSIZE];
-    init_builtins();
     while(1){
         printf(">");
         fflush(stdout);

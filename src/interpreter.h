@@ -24,7 +24,7 @@ struct OperationElem {
 
 struct BrOperationElem {
 	char* key;
-	br_operations op;
+	br_operations brop;
 	struct BrOperationElem* next;
 };
 
@@ -95,6 +95,7 @@ void numop_dig(struct ProgramState* state, size_t num, struct ExceptionHandler *
 
 void brop_if(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
 void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
+void brop_times(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff);
 
 void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff);
 void brop_swap(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
