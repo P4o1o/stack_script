@@ -22,9 +22,9 @@ void print_usage() {
 
 void load_file(struct ProgramState* state, char* filepath) {
     struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
-    try_buf->not_exec = filepath;
     if (try_buf == NULL)
         exit(-1);
+    try_buf->not_exec = filepath;
     TRY(try_buf) {
         brop_load(state, filepath, strlen(filepath), try_buf);
         free(try_buf);
@@ -89,6 +89,7 @@ int main(int argc, char *argv[]) {
         }
     }
     char bufferin[BUFFERSIZE];
+    init_builtins();
     while(1){
         printf(">");
         fflush(stdout);
@@ -106,5 +107,6 @@ int main(int argc, char *argv[]) {
     }
     free(try_buf);
     free_PrgState(&state);
+    free_builtins();
     return 0;
 }

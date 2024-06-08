@@ -16,15 +16,17 @@ const char *NUMBERED_INSTR[] = {
         "dup", "swap", "dig"
 };
 
+#define BRACKETS_SIZE 11
 const char *BRACKETS_INSTR[] = {
         "",
         "load(","if(","save(",
         "delete(","isdef(","loop(",
-        "swap(","define(","dup(",
+        "swap(","define(","dup(", "times(", "dig("
 };
 
 const char BR_CLOSE = ')';
 
+#define INSTR_SIZE 39
 const char* INSTRUCTIONS[] = {
         "",
         "int", "clear", "quote", "<=", "dup",
@@ -34,7 +36,7 @@ const char* INSTRUCTIONS[] = {
         "drop", "empty", "if", "loop", "not",
         "pow", "printall", "roll", "sqrt", "top",
         "xor", "!=", "*", "-", "<",
-        "==", ">=",
+        "==", ">=", "true", "false"
 };
 
 const operations INSTR_OP[] ={
@@ -45,18 +47,99 @@ const operations INSTR_OP[] ={
         op_drop, op_empty, op_if, op_loop, op_not,
         op_pow, op_printall, op_roll, op_sqrt, op_top,
         op_xor, op_notequal, op_mul, op_sub, op_lower,
-        op_equal, op_greathereq
+        op_equal, op_greathereq, op_true, op_false
 };
 
 br_operations BR_INSTR_OP[] ={
         brop_load, brop_if, brop_save,
         brop_delete, brop_isdef, brop_loop,
-        brop_swap, brop_define, brop_dup
+        brop_swap, brop_define, brop_dup, brop_times, brop_dig
 };
 
 num_operations NUM_INSTR_OP[] = {
         numop_dup, numop_swap, numop_dig
 };
+
+struct Builtins builtins;
+
+#define HASHKEY_OP0 0x734ad7e3439432a3ULL
+#define HASHKEY_OP1 0x54dc762ab02dc4deULL
+#define HASHKEY_BROP0 0x734ad7e3439432a3ULL
+#define HASHKEY_BROP1 0x54dc762ab02dc4deULL
+int init_builtins() {
+    builtins.op_map = malloc(OP_MAP_SIZE * sizeof(struct OperationElem*));
+    if (builtins.op_map == NULL)
+        return 0;
+    for (size_t i = 0; i < OP_MAP_SIZE; i++) {
+        builtins.op_map[i] = NULL;
+    }
+    builtins.brop_map = malloc(BROP_MAP_SIZE * sizeof(struct BrOperationElem*));
+    if (builtins.brop_map == NULL)
+        return 0;
+    for (size_t i = 0; i < BROP_MAP_SIZE; i++) {
+        builtins.brop_map[i] = NULL;
+    }
+    for (size_t i = 0; i < INSTR_SIZE; i++) {
+        uint64_t index = SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, INSTRUCTIONS[i], strlen(INSTRUCTIONS[i])) & (OP_MAP_SIZE - 1);
+        struct OperationElem* elem = builtins.op_map[index];
+        while (elem != NULL) {
+            if (strcmp(INSTRUCTIONS[i], elem->key) == 0) {
+                return 0;
+            }
+            elem = elem->next;
+        }
+        elem = malloc(sizeof(struct OperationElem));
+        if (elem == NULL)
+            return 0;
+        elem->key = INSTRUCTIONS[i];
+        elem->op = INSTR_OP[i];
+        elem->next = builtins.op_map[index];
+        builtins.op_map[index] = elem;
+    }
+    for (size_t i = 0; i < BRACKETS_SIZE; i++) {
+        uint64_t index = SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, BRACKETS_INSTR[i], strlen(BRACKETS_INSTR[i])) & (BROP_MAP_SIZE - 1);
+        struct BrOperationElem* elem = builtins.brop_map[index];
+        while (elem != NULL) {
+            if (strcmp(BRACKETS_INSTR[i], elem->key) == 0) {
+                return 0;
+            }
+            elem = elem->next;
+        }
+        elem = malloc(sizeof(struct BrOperationElem));
+        if (elem == NULL)
+            return 0;
+        elem->key = BRACKETS_INSTR[i];
+        elem->op = BR_INSTR_OP[i];
+        elem->next = builtins.brop_map[index];
+        builtins.brop_map[index] = elem;
+    }
+    return 1;
+}
+
+
+
+void free_builtins() {
+    for (size_t i = 0; i < OP_MAP_SIZE; i++) {
+        struct OperationElem* elem = builtins.op_map[i];
+        while (elem != NULL) {
+            struct OperationElem* temp = elem->next;
+            free(elem);
+            elem = temp;
+        }
+    }
+    free(builtins.op_map);
+    for (size_t i = 0; i < BROP_MAP_SIZE; i++) {
+        struct BrOperationElem* elem = builtins.brop_map[i];
+        while (elem != NULL) {
+            struct BrOperationElem* temp = elem->next;
+            free(elem);
+            elem = temp;
+        }
+    }
+    free(builtins.brop_map);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static inline void push_Stack(struct Stack *stack, const struct StackElem val, struct ExceptionHandler *jbuff){
     if(stack->next + 1 == stack->capacity){
@@ -315,6 +398,20 @@ void print_stack(struct ProgramState* state, size_t num_elem) {
 //------------------------------------------------------------------------------------------------------
 
 
+void op_true(struct ProgramState* state, struct ExceptionHandler* jbuff) {
+    struct StackElem elem;
+    elem.type = BoolTrue;
+    elem.val.instr = NULL;
+    push_Stack(&state->stack, elem, jbuff);
+}
+
+void op_false(struct ProgramState* state, struct ExceptionHandler* jbuff) {
+    struct StackElem elem;
+    elem.type = BoolFalse;
+    elem.val.instr = NULL;
+    push_Stack(&state->stack, elem, jbuff);
+}
+
 void brop_times(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff) {
     if (state->stack.next == 0)
         RAISE(jbuff, StackUnderflow);
@@ -347,6 +444,37 @@ void brop_times(struct ProgramState* state, char* number, size_t numberlen, stru
         RAISE(jbuff, exitval);
     }
     free(mem);
+    free(try_buf);
+}
+
+void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff) {
+    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    if (try_buf == NULL) {
+        RAISE(jbuff, ProgramPanic);
+    }
+    TRY(try_buf) {
+        parse_script(state, number, numberlen, try_buf);
+        state->stack.next -= 1;
+        if (state->stack.content[state->stack.next].type != Integer) {
+            state->stack.next += 1;
+            RAISE(try_buf, InvalidOperands);
+        }
+        if (state->stack.next <= state->stack.content[state->stack.next].val.ival){
+            state->stack.next += 1;
+            RAISE(jbuff, StackUnderflow);
+        }
+        size_t index = state->stack.next - 1;
+        size_t indextar = state->stack.next - 1 - state->stack.content[state->stack.next].val.ival;
+        struct StackElem temp = state->stack.content[indextar];
+        for (size_t i = indextar; i < index; i++) {
+            state->stack.content[i] = state->stack.content[i + 1];
+        }
+        state->stack.content[index] = temp;
+    }CATCHALL{
+        uint32_t exitval = try_buf->exit_value;
+        free(try_buf);
+        RAISE(jbuff, exitval);
+    }
     free(try_buf);
 }
 
@@ -501,7 +629,7 @@ void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void numop_dig(struct ProgramState* state, size_t num, struct ExceptionHandler* jbuff){
-    if (state->stack.next < num) {
+    if (state->stack.next <= num) {
         RAISE(jbuff, StackUnderflow);
     }
     size_t index = state->stack.next - 1;

@@ -8,7 +8,8 @@
 #include "stack.h"
 #include "environment.h"
 
-
+#define OP_MAP_SIZE 64
+#define BROP_MAP_SIZE 32
 
 extern const char *BOOL[];
 extern const char *INSTRUCTIONS[];
@@ -33,7 +34,12 @@ struct Builtins {
 	struct BrOperationElem** brop_map;
 };
 
+extern struct Builtins builtins;
+int init_builtins();
+void free_builtins();
 
+void op_true(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_false(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_notequal(struct ProgramState *state, struct ExceptionHandler *jbuff);
@@ -89,10 +95,14 @@ void numop_dig(struct ProgramState* state, size_t num, struct ExceptionHandler *
 
 void brop_if(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
 void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff);
+
+void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff);
 void brop_swap(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
 void brop_dup(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
+
 void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
 void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
+
 void brop_isdef(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff);
 void brop_define(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff);
 void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff);
