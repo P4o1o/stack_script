@@ -1,6 +1,3 @@
-
-[swap quote compose apply] define(ddip) {defined dip   Speed to be tested with dip}
-
 [[quote] dip compose] define(cons)
 
 [swap quote compose] define(take)
