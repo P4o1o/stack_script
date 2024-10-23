@@ -27,7 +27,7 @@ uint64_t SipHash_2_4(const uint64_t keytop, const uint64_t keybottom, const char
     uint64_t v2 = keybottom ^ 0x6c7967656e657261ULL;
     uint64_t v3 = keytop ^ 0x7465646279746573ULL;
     size_t lenlast = len & 7;
-    char* end = message + (len - lenlast);
+    const char* end = message + (len - lenlast);
     while (message != end) {
         uint64_t mess_i = ((uint64_t)message[7] << 56)
             | ((uint64_t)message[6] << 48)

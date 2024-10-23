@@ -10,5 +10,10 @@
 
 [size [[+] loop(size 1 >)] dip /] define(mean)
 
+[dup dup 1 == swap 0 == or not [dup 1 - fib swap 2 - fib +] [nop] if] define(fib)
+
+
+
 [[swap(size 1 -) 1 + dup] [< swap swap(size 1 -) swap] swap3 quote compose swap quote swap2 compose compose loop swap(size 1 -) drop] define(fill)
 
+clear 10 15 22 fill

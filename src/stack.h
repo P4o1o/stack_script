@@ -9,12 +9,26 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __GNUC__
+	#define UNREACHABLE __builtin_unreachable()
+#else
+#ifdef _MSC_VER
+	#define UNREACHABLE __assume(0);
+#else
+	[[noreturn]] inline void unreachable(){}
+	#define UNREACHABLE unreachable()
+#endif
+#endif
+
+#include "memdebug.h"
+
 enum ElemType{
     Instruction,
     Integer,
     Floating,
     BoolTrue,
     BoolFalse,
+    String
 };
 
 union ElemVal{

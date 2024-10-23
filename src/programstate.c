@@ -14,7 +14,7 @@ static struct Stack init_Stack(const size_t capacity){
 
 static inline void free_Stack(struct Stack stack){
     for(size_t i = 0; i < stack.next; i++){
-        if (stack.content[i].type == Instruction) {
+        if (stack.content[i].type == Instruction || stack.content[i].type == String) {
             free(stack.content[i].val.instr);
         }
     }
@@ -60,6 +60,47 @@ void free_PrgState(struct ProgramState *inter){
     free_Environment(inter->env);
 }
 
+struct ExceptionHandler *init_ExceptionHandler(){
+    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
+    try_buf->not_exec = malloc(sizeof(char *) * BT_VEC_CAPACITY);
+    try_buf->bt_size = 1;
+    try_buf->bt_capacity = BT_VEC_CAPACITY;
+    try_buf->openmemmap = malloc(sizeof(struct OpenMemMap *) * OM_VEC_CAPACITY);
+    for(size_t i = 0; i < OM_VEC_CAPACITY; i++){
+        try_buf->openmemmap[i] = NULL;
+    }
+    return try_buf;
+}
+
+void reload_Exceptionhandler(struct ExceptionHandler *try_buf){
+    for(size_t i = 0; i < OM_VEC_CAPACITY; i++){
+        while(try_buf->openmemmap[i] != NULL){
+            struct OpenMemMap *temp = try_buf->openmemmap[i];
+            try_buf->openmemmap[i] =  try_buf->openmemmap[i]->next;
+            free(temp->openmem);
+            free(temp);
+        }
+    }
+    try_buf->bt_capacity = BT_VEC_CAPACITY;
+    free(try_buf->not_exec);
+    try_buf->not_exec = malloc(sizeof(char *) * BT_VEC_CAPACITY);
+    try_buf->bt_size = 1;
+}
+
+void free_ExceptionHandler(struct ExceptionHandler *try_buf){
+    free(try_buf->not_exec);
+    for(size_t i = 0; i < OM_VEC_CAPACITY; i++){
+        while(try_buf->openmemmap[i] != NULL){
+            struct OpenMemMap *temp = try_buf->openmemmap[i];
+            try_buf->openmemmap[i] =  try_buf->openmemmap[i]->next;
+            free(temp->openmem);
+            free(temp);
+        }
+    }
+    free(try_buf->openmemmap);
+    free(try_buf);
+}
+
 void print_Exception(struct ExceptionHandler *exc) {
     char *excstr;
     switch(exc->exit_value){
@@ -75,8 +116,14 @@ void print_Exception(struct ExceptionHandler *exc) {
         case InvalidOperands:
             excstr = "Invalid operands";
             break;
-        case ParenthesisError:
-            excstr = "Parenthesis number mismatch";
+        case SquaredParenthesisError:
+            excstr = "Squared Parenthesis number mismatch";
+            break;
+        case RoundParenthesisError:
+            excstr = "Squared Parenthesis number mismatch";
+            break;
+        case StringQuotingError:
+            excstr = "String quoting marks number mismatch";
             break;
         case StackUnderflow:
             excstr = "Stack underflow";
@@ -94,7 +141,18 @@ void print_Exception(struct ExceptionHandler *exc) {
             excstr = "File not creatable";
             break;
         default:
-            excstr = "";
+            UNREACHABLE;
     }
-    printf("%s not executed: %12s\n", excstr, exc->not_exec);
+    printf("%s not executed: %12s\n", excstr, exc->not_exec[0]);
+    if(exc->bt_size > 1){
+        printf("Backtrace:\n");
+        char *tabs = malloc(sizeof(char) * exc->bt_size);
+        tabs[0] = '\t';
+        for(size_t i = 1; i < exc->bt_size; i++){
+            tabs[i] = '\0';
+            printf("%s%s\n", tabs, exc->not_exec[i]);
+            tabs[i] = '\t';
+        }
+        free(tabs);
+    }
 }

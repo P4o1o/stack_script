@@ -16,16 +16,16 @@ const char *NUMBERED_INSTR[] = {
         "dup", "swap", "dig"
 };
 
-#define BRACKETS_SIZE 11
+#define BRACKETS_SIZE 12
 const char *BRACKETS_INSTR[] = {
-        "load","if","save",
-        "delete","isdef","loop",
+        "load","if","save","compose",
+        "delete","isdef","loop","split",
         "swap","define","dup", "times", "dig"
 };
 
 const char BR_CLOSE = ')';
 
-#define INSTR_SIZE 39
+#define INSTR_SIZE 40
 const char* INSTRUCTIONS[] = {
         "int", "clear", "quote", "<=", "dup",
         "or", "swap", "+", "and", "dip",
@@ -34,7 +34,7 @@ const char* INSTRUCTIONS[] = {
         "drop", "empty", "if", "loop", "not",
         "pow", "printall", "roll", "sqrt", "top",
         "xor", "!=", "*", "-", "<",
-        "==", ">=", "true", "false"
+        "==", ">=", "true", "false", "split"
 };
 
 const operations INSTR_OP[] ={
@@ -45,18 +45,20 @@ const operations INSTR_OP[] ={
         op_drop, op_empty, op_if, op_loop, op_not,
         op_pow, op_printall, op_roll, op_sqrt, op_top,
         op_xor, op_notequal, op_mul, op_sub, op_lower,
-        op_equal, op_greathereq, op_true, op_false
+        op_equal, op_greathereq, op_true, op_false, op_split
 };
 
 br_operations BR_INSTR_OP[] ={
-        brop_load, brop_if, brop_save,
-        brop_delete, brop_isdef, brop_loop,
+        brop_load, brop_if, brop_save, brop_compose,
+        brop_delete, brop_isdef, brop_loop, brop_split,
         brop_swap, brop_define, brop_dup, brop_times, brop_dig
 };
 
 num_operations NUM_INSTR_OP[] = {
         numop_dup, numop_swap, numop_dig
 };
+
+#define IS_INDENT(comand) ((int) ((comand) == ' ' || (comand) == '\n' || (comand) == '\t' || (comand) == '\r' || (comand) == '\0'))
 
 struct Builtins builtins;
 
@@ -215,25 +217,87 @@ static inline int remove_Environment(struct Environment* env, const char* key, s
 
 
 static inline void print_single(struct Stack *stack, size_t num){
-    if(stack->content[stack->next - num].type == Instruction) {
+    switch (stack->content[stack->next - num].type)
+    {
+    case Instruction:
         printf("[ %s ]\n", stack->content[stack->next - num].val.instr);
-    }else if(stack->content[stack->next - num].type == Integer) {
+        break;
+    case String:
+        printf("\"%s\"\n", stack->content[stack->next - num].val.instr);
+        break;
+    case Integer:
         printf("%ld\n", stack->content[stack->next - num].val.ival);
-    }else if(stack->content[stack->next - num].type == Floating) {
+        break;
+    case Floating:
         printf("%lf\n", stack->content[stack->next - num].val.fval);
-    }else if(stack->content[stack->next - num].type == BoolTrue) {
+        break;
+    case BoolTrue:
         printf("%s\n", BOOL[0]);
-    }else if(stack->content[stack->next - num].type == BoolFalse) {
+        break;
+    case BoolFalse:
         printf("%s\n", BOOL[1]);
+        break;
+    default:
+        UNREACHABLE;
     }
+}
+
+inline void add_backtrace(struct ExceptionHandler *jbuff){
+    jbuff->bt_size += 1;
+    if(jbuff->bt_size >= jbuff->bt_capacity){
+        jbuff->bt_capacity *= 2;
+        jbuff->not_exec = realloc(jbuff->not_exec, sizeof(char *) * jbuff->bt_capacity);
+    }
+}
+
+inline void remove_backtrace(struct ExceptionHandler *jbuff){
+    jbuff->bt_size -= 1;
+}
+
+inline void add_memory(struct ExceptionHandler *jbuff, char *mem){
+    size_t index = ((size_t) mem) % OM_VEC_CAPACITY;
+    struct OpenMemMap *elem = malloc(sizeof(struct OpenMemMap));
+    if (elem == NULL)
+        RAISE(jbuff, ProgramPanic);
+    elem->openmem = mem;
+    elem->next = jbuff->openmemmap[index];
+    jbuff->openmemmap[index] = elem;
+}
+
+inline int remove_memory(struct ExceptionHandler *jbuff, char *mem){
+    size_t index = ((size_t) mem) % OM_VEC_CAPACITY;
+    struct OpenMemMap** elem_ptr = &jbuff->openmemmap[index];
+    struct OpenMemMap* elem = *elem_ptr;
+    while (elem != NULL) {
+        if (mem == elem->openmem) {
+            free(mem);
+            *elem_ptr = elem->next;
+            free(elem);
+            return 1;
+        }
+        elem_ptr = &elem->next;
+        elem = *elem_ptr;
+    }
+    return 0;
 }
 //------------------------------------------------------------------------------------------------------
 
-void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
-    jbuff->not_exec = instr;
+inline void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
+    jbuff->not_exec[jbuff->bt_size - 1] = instr;
     if(instr[0] == '[' && instr[instrlen - 1] == ']'){
         struct StackElem elem;
         elem.type = Instruction;
+        size_t qexpsize = instrlen - 1;
+        elem.val.instr = malloc(qexpsize);
+        if(elem.val.instr == NULL)
+            RAISE(jbuff, ProgramPanic);
+        strncpy(elem.val.instr, instr + 1, qexpsize - 1);
+        elem.val.instr[qexpsize - 1] = '\0';
+        push_Stack(&state->stack, elem, jbuff);
+        return;
+    }else if(instr[0] == '"' && instr[instrlen - 1] == '"'){
+        struct StackElem elem;
+        elem.type = String;
         size_t qexpsize = instrlen - 1;
         elem.val.instr = malloc(qexpsize);
         if(elem.val.instr == NULL)
@@ -269,8 +333,9 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
                 goto found_open_br;
             }
         RAISE(jbuff, InvalidInstruction);
-    found_open_br:
-        size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
+        size_t index;
+found_open_br:
+        index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
         struct BrOperationElem* elem = builtins.brop_map[index];
         while (elem != NULL) {
             if (strncmp(instr, elem->key, br_index) == 0 && br_index == strlen(elem->key)) {
@@ -305,8 +370,12 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         if (get_Environment(&state->env, instr, instrlen, funct) == 1) {
             char* text = *funct;
             free(funct);
+            add_backtrace(jbuff);
             parse_script(state, text, strlen(text), jbuff);
+            remove_backtrace(jbuff);
             return;
+        }else{
+            free(funct);
         }
     }
     RAISE(jbuff, InvalidInstruction);
@@ -316,22 +385,15 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
     size_t start = 0;
     size_t quote = 0;
     size_t round_br = 0;
-    short brackets = 0;
+    short string = 0;
     for(size_t i = 0; i < clen; i++){
-        if((comands[i] >= 'a' && comands[i] <= 'z')
-           || (comands[i] >= 'A' && comands[i] <= 'Z')
-           || comands[i] == '+' || comands[i] == '*'
-           || (comands[i] >= '-' && comands[i] <= '9')
-           || comands[i] == '%' || comands[i] == '!'
-           || (comands[i] >= '<' && comands[i] <= '>')){
-            continue;
-        }else if(comands[i] == '['){
+        if(comands[i] == '['){
             quote += 1;
         }else if(comands[i] == ']'){
             if(quote == 0)
-                RAISE(jbuff, ParenthesisError);
+                RAISE(jbuff, SquaredParenthesisError);
             quote -= 1;
-            if(quote == 0 && round_br == 0 && brackets == 0){
+            if(quote == 0 && round_br == 0 && string == 0){
                 execute_instr(state, comands + start, i + 1 - start, jbuff);
                 start = i + 1;
             }
@@ -339,38 +401,38 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
             round_br += 1;
         }else if(comands[i] == ')'){
             if(round_br == 0)
-                RAISE(jbuff, ParenthesisError);
+                RAISE(jbuff, RoundParenthesisError);
             round_br -= 1;
-            if(quote == 0 && round_br == 0 && brackets == 0){
+            if(quote == 0 && round_br == 0 && string == 0){
                 execute_instr(state, comands + start, i + 1 - start, jbuff);
                 start = i + 1;
             }
-        }else if(comands[i] == '{'){
-            brackets += 1;
-        }else if(comands[i] == '}'){
-            if(round_br == 0)
-                RAISE(jbuff, ParenthesisError);
-            round_br -= 1;
-            if(round_br == 0){
+        }else if(comands[i] == '"'){
+            string += 1;
+            string %= 2;
+            if(quote == 0 && round_br == 0 && string == 0){
+                execute_instr(state, comands + start, i + 1 - start, jbuff);
                 start = i + 1;
             }
         }else if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
-            if(quote == 0 && round_br == 0 && brackets == 0){
+            if(quote == 0 && round_br == 0 && string == 0){
                 if(i - start > 0) {
                     execute_instr(state, comands + start, i - start, jbuff);
                 }
                 start = i + 1;
             }
-        }else{
-            RAISE(jbuff, InvalidChar);
         }
     }
-    if(quote == 0 && round_br == 0){
+    if(quote != 0){
+        RAISE(jbuff, SquaredParenthesisError);
+    }else if(round_br != 0){
+        RAISE(jbuff, RoundParenthesisError);
+    }else if(quote != 0){
+        RAISE(jbuff, StringQuotingError);
+    }else{
         if(start != clen){
             execute_instr(state, comands + start, clen - start, jbuff);
         }
-    }else{
-        RAISE(jbuff, ParenthesisError);
     }
 }
 
@@ -388,6 +450,170 @@ void print_stack(struct ProgramState* state, size_t num_elem) {
 
 //------------------------------------------------------------------------------------------------------
 
+void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if (state->stack.next == 0)
+        RAISE(jbuff, StackUnderflow);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type == Instruction) {
+        size_t quote = 0;
+        size_t start = 0;
+        size_t round_br = 0;
+        short string = 0;
+        size_t i = 0;
+        char *original = state->stack.content[state->stack.next].val.instr;
+        for(; original[i] != '\0'; i++){
+            if(original[i] == '['){
+            quote += 1;
+            }else if(original[i] == ']'){
+                quote -= 1;
+                if(quote == 0 && round_br == 0 && string == 0){
+                    struct StackElem elem;
+                    elem.type = Instruction;
+                    elem.val.instr = malloc(i + 2 - start);
+                    if (elem.val.instr == NULL)
+                        RAISE(jbuff, ProgramPanic);
+                    strncpy(elem.val.instr, original + start, i + 1 - start);
+                    elem.val.instr[i + 1 - start] = '\0';
+                    push_Stack(&state->stack, elem, jbuff);
+                    start = i + 1;
+                }
+            }else if(original[i] == '('){
+                round_br += 1;
+            }else if(original[i] == ')'){
+                round_br -= 1;
+                if(quote == 0 && round_br == 0 && string == 0){
+                    struct StackElem elem;
+                    elem.type = Instruction;
+                    elem.val.instr = malloc(i + 2 - start);
+                    if (elem.val.instr == NULL)
+                        RAISE(jbuff, ProgramPanic);
+                    strncpy(elem.val.instr, original + start, i + 1 - start);
+                    elem.val.instr[i + 1 - start] = '\0';
+                    push_Stack(&state->stack, elem, jbuff);
+                    start = i + 1;
+                }
+            }else if(original[i] == '"'){
+                string += 1;
+                string %= 2;
+                if(quote == 0 && round_br == 0 && string == 0){
+                    struct StackElem elem;
+                    elem.type = Instruction;
+                    elem.val.instr = malloc(i + 2 - start);
+                    if (elem.val.instr == NULL)
+                        RAISE(jbuff, ProgramPanic);
+                    strncpy(elem.val.instr, original + start, i + 1 - start);
+                    elem.val.instr[i + 1 - start] = '\0';
+                    push_Stack(&state->stack, elem, jbuff);
+                    start = i + 1;
+                }
+            }else if(IS_INDENT(original[i])){
+                if(quote == 0 && round_br == 0 && string == 0){
+                    if(i - start > 0) {
+                        struct StackElem elem;
+                        elem.type = Instruction;
+                        elem.val.instr = malloc(i + 1 - start);
+                        if (elem.val.instr == NULL)
+                            RAISE(jbuff, ProgramPanic);
+                        strncpy(elem.val.instr, original + start, i - start);
+                        elem.val.instr[i - start] = '\0';
+                        push_Stack(&state->stack, elem, jbuff);
+                    }
+                    start = i + 1;
+                }
+            }
+        }
+        if(i) {
+            struct StackElem elem;
+            elem.type = Instruction;
+            elem.val.instr = malloc(i + 1 - start);
+            if (elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, original + start, i - start);
+            elem.val.instr[i - start] = '\0';
+            push_Stack(&state->stack, elem, jbuff);
+        }
+        free(original);
+    }else if(state->stack.content[state->stack.next].type == String){
+        char *original = state->stack.content[state->stack.next].val.instr;
+        char *token = strtok(original, " ");
+        do{
+            struct StackElem elem;
+            elem.type = String;
+            size_t tokenlen = strlen(token);
+            elem.val.instr = malloc(tokenlen + 1);
+             if (elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, token, tokenlen);
+            elem.val.instr[tokenlen] = '\0';
+            push_Stack(&state->stack, elem, jbuff);
+        }while((token = strtok(NULL, " ")) != NULL);
+        free(original);
+    }else{
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void brop_split(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
+    add_backtrace(jbuff);
+    parse_script(state, comand, clen, jbuff);
+    remove_backtrace(jbuff);
+    if(state->stack.next < 2)
+        RAISE(jbuff, StackUnderflow);
+    state->stack.next -= 1;
+    struct StackElem delimiter = state->stack.content[state->stack.next];
+    state->stack.next -= 1;
+    struct StackElem string = state->stack.content[state->stack.next];
+    if(delimiter.type == String && string.type == String) {
+        char *token = strtok(string.val.instr, " ");
+        do{
+            struct StackElem elem;
+            elem.type = String;
+            size_t tokenlen = strlen(token);
+            elem.val.instr = malloc(tokenlen + 1);
+             if (elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, token, tokenlen);
+            elem.val.instr[tokenlen] = '\0';
+            push_Stack(&state->stack, elem, jbuff);
+        }while((token = strtok(NULL, delimiter.val.instr)) != NULL);
+        free(string.val.instr);
+        free(delimiter.val.instr);
+    }else{
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void brop_compose(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
+    add_backtrace(jbuff);
+    parse_script(state, comand, clen, jbuff);
+    remove_backtrace(jbuff);
+    if(state->stack.next < 3)
+        RAISE(jbuff, StackUnderflow);
+     state->stack.next -= 1;
+    struct StackElem delimiter = state->stack.content[state->stack.next];
+    state->stack.next -= 1;
+    struct StackElem second = state->stack.content[state->stack.next];
+    if(state->stack.content[state->stack.next - 1].type == String && second.type == String && delimiter.type == String){
+        size_t delimlen = strlen(delimiter.val.instr);
+        size_t lensecond = strlen(second.val.instr);
+        size_t lenfirst =  strlen(state->stack.content[state->stack.next - 1].val.instr);
+        size_t totsize = lensecond + lenfirst + delimlen + 1;
+        state->stack.content[state->stack.next - 1].val.instr = realloc(state->stack.content[state->stack.next - 1].val.instr, totsize);
+        if(state->stack.content[state->stack.next - 1].val.instr == NULL){
+            RAISE(jbuff, ProgramPanic);
+        }
+        strcpy(state->stack.content[state->stack.next - 1].val.instr + lenfirst, delimiter.val.instr);
+        strcpy(state->stack.content[state->stack.next - 1].val.instr + delimlen + lenfirst, second.val.instr);
+        state->stack.content[state->stack.next - 1].val.instr[totsize - 1] = '\0';
+        free(delimiter.val.instr);
+        free(second.val.instr);
+    }else{
+        state->stack.next += 2;
+        RAISE(jbuff, InvalidOperands);
+    }
+}
 
 void op_true(struct ProgramState* state, struct ExceptionHandler* jbuff) {
     struct StackElem elem;
@@ -411,62 +637,45 @@ void brop_times(struct ProgramState* state, char* number, size_t numberlen, stru
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
-    if (try_buf == NULL) {
-        state->stack.next += 1;
-        RAISE(jbuff, ProgramPanic);
-    }
     char* mem = state->stack.content[state->stack.next].val.instr;
-    TRY(try_buf) {
-        parse_script(state, number, numberlen, try_buf);
-        state->stack.next -= 1;
-        if (state->stack.content[state->stack.next].type != Integer) {
-            state->stack.next += 2;
-            RAISE(try_buf, InvalidOperands);
-        }
-        for (int i = 0; i < state->stack.content[state->stack.next].val.ival; i++) {
-            parse_script(state, mem, strlen(mem), try_buf);
-
-        }
-    }CATCHALL{
-        free(mem);
-        uint32_t exitval = try_buf->exit_value;
-        free(try_buf);
-        RAISE(jbuff, exitval);
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
+    parse_script(state, number, numberlen, jbuff);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type != Integer) {
+        state->stack.next += 2;
+        RAISE(jbuff, InvalidOperands);
     }
-    free(mem);
-    free(try_buf);
+    remove_backtrace(jbuff);
+    add_backtrace(jbuff);
+    for (int i = 0; i < state->stack.content[state->stack.next].val.ival; i++) {
+        parse_script(state, mem, strlen(mem), jbuff);
+
+    }
+    remove_backtrace(jbuff);
+    remove_memory(jbuff, mem);
 }
 
 void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff) {
-    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
-    if (try_buf == NULL) {
-        RAISE(jbuff, ProgramPanic);
+    add_backtrace(jbuff);
+    parse_script(state, number, numberlen, jbuff);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type != Integer) {
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
     }
-    TRY(try_buf) {
-        parse_script(state, number, numberlen, try_buf);
-        state->stack.next -= 1;
-        if (state->stack.content[state->stack.next].type != Integer) {
-            state->stack.next += 1;
-            RAISE(try_buf, InvalidOperands);
-        }
-        if (state->stack.next <= state->stack.content[state->stack.next].val.ival){
-            state->stack.next += 1;
-            RAISE(jbuff, StackUnderflow);
-        }
-        size_t index = state->stack.next - 1;
-        size_t indextar = state->stack.next - 1 - state->stack.content[state->stack.next].val.ival;
-        struct StackElem temp = state->stack.content[indextar];
-        for (size_t i = indextar; i < index; i++) {
-            state->stack.content[i] = state->stack.content[i + 1];
-        }
-        state->stack.content[index] = temp;
-    }CATCHALL{
-        uint32_t exitval = try_buf->exit_value;
-        free(try_buf);
-        RAISE(jbuff, exitval);
+    if (state->stack.next <= state->stack.content[state->stack.next].val.ival){
+        state->stack.next += 1;
+        RAISE(jbuff, StackUnderflow);
     }
-    free(try_buf);
+    size_t index = state->stack.next - 1;
+    size_t indextar = state->stack.next - 1 - state->stack.content[state->stack.next].val.ival;
+    struct StackElem temp = state->stack.content[indextar];
+    for (size_t i = indextar; i < index; i++) {
+        state->stack.content[i] = state->stack.content[i + 1];
+    }
+    state->stack.content[index] = temp;
+    remove_backtrace(jbuff);
 }
 
 
@@ -520,19 +729,11 @@ void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct 
     if(comandlen == 0 || fclose(target) != 0)
         RAISE(jbuff, IOError);
     fcontent[comandlen] = '\0';
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL)
-        RAISE(jbuff, ProgramPanic);
-    TRY(try_buf){
-        parse_script(state, fcontent, comandlen, try_buf);
-    }CATCHALL{
-        free(fcontent);
-        uint32_t exitval = try_buf->exit_value;
-        free(try_buf);
-        RAISE(jbuff, exitval);
-    }
-    free(fcontent);
-    free(try_buf);
+    add_memory(jbuff, fcontent);
+    add_backtrace(jbuff);
+    parse_script(state, fcontent, comandlen, jbuff);
+    remove_backtrace(jbuff);
+    remove_memory(jbuff, fcontent);
 }
 
 void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff){
@@ -546,7 +747,12 @@ void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct 
         RAISE(jbuff, FileNotCreatable);
     for(size_t i = 0; i < state->stack.next; i++){
         if(state->stack.content[i].type == Instruction){
-            if(fprintf(target, "%s ", state->stack.content[i].val.instr) < 0){
+            if(fprintf(target, "[%s] ", state->stack.content[i].val.instr) < 0){
+                fclose(target);
+                RAISE(jbuff, IOError);
+            }
+        }else if(state->stack.content[i].type == String){
+            if(fprintf(target, "\"%s\" ", state->stack.content[i].val.instr) < 0){
                 fclose(target);
                 RAISE(jbuff, IOError);
             }
@@ -597,25 +803,14 @@ void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff){
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler* try_buf = malloc(sizeof(struct ExceptionHandler));
-    if (try_buf == NULL) {
-        state->stack.next += 1;
-        RAISE(jbuff, ProgramPanic);
-    }
     char* mem = state->stack.content[state->stack.next].val.instr;
     state->stack.next -= 1;
     struct StackElem temp = state->stack.content[state->stack.next];
-    TRY(try_buf) {
-        parse_script(state, mem, strlen(mem), try_buf);
-    }CATCHALL{
-        free(mem);
-        uint32_t err = try_buf->exit_value;
-        free(try_buf);
-        push_Stack(&state->stack, temp, jbuff);
-        RAISE(jbuff, err);
-    }
-    free(mem);
-    free(try_buf);
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
+    parse_script(state, mem, strlen(mem), jbuff);
+    remove_memory(jbuff, mem);
+    remove_backtrace(jbuff);
     push_Stack(&state->stack, temp, jbuff);
 }
 
@@ -648,41 +843,25 @@ void op_if(struct ProgramState *state, struct ExceptionHandler *jbuff){
         state->stack.next += 2;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL){
-        state->stack.next += 2;
-        RAISE(jbuff, ProgramPanic);
-    }
     char *memt = state->stack.content[state->stack.next].val.instr;
     state->stack.next -= 1;
     if(state->stack.content[state->stack.next].type == BoolTrue){
-        TRY(try_buf){
-            parse_script(state, memt, strlen(memt), try_buf);
-        }CATCHALL{
-            free(memt);
-            free(memf);
-            uint32_t exitval = try_buf->exit_value;
-            free(try_buf);
-            RAISE(jbuff, exitval);
-        }
+        add_memory(jbuff, memt);
+        add_memory(jbuff, memf);
+        add_backtrace(jbuff);
+        parse_script(state, memt, strlen(memt), jbuff);
     }else if(state->stack.content[state->stack.next].type == BoolFalse){
-        TRY(try_buf) {
-            parse_script(state, memf, strlen(memf), try_buf);
-        }CATCHALL{
-            free(memt);
-            free(memf);
-            uint32_t exitval = try_buf->exit_value;
-            free(try_buf);
-            RAISE(jbuff, exitval);
-        }
+        add_memory(jbuff, memt);
+        add_memory(jbuff, memf);
+        add_backtrace(jbuff);
+        parse_script(state, memf, strlen(memf), jbuff);
     }else{
         state->stack.next += 3;
-        free(try_buf);
         RAISE(jbuff, InvalidOperands);
     }
-    free(memf);
-    free(memt);
-    free(try_buf);
+    remove_memory(jbuff, memf);
+    remove_memory(jbuff, memt);
+    remove_backtrace(jbuff);
 }
 
 void brop_if(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff){
@@ -699,35 +878,25 @@ void brop_if(struct ProgramState *state, char *cond, size_t condlen, struct Exce
         state->stack.next += 2;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL){
-        state->stack.next += 2;
-        RAISE(jbuff, ProgramPanic);
-    }
     char *memt = state->stack.content[state->stack.next].val.instr;
-    TRY(try_buf) {
-        parse_script(state, cond, condlen, try_buf);
-        if(state->stack.next < 1)
-            RAISE(try_buf, StackUnderflow);
-        state->stack.next -= 1;
-        if (state->stack.content[state->stack.next].type == BoolTrue) {
-            parse_script(state, memt, strlen(memt), try_buf);
-        } else if (state->stack.content[state->stack.next].type == BoolFalse){
-            parse_script(state, memf, strlen(memf), try_buf);
-        } else {
-            state->stack.next += 1;
-            RAISE(try_buf, InvalidOperands);
-        }
-    }CATCHALL{
-        free(memt);
-        free(memf);
-        uint32_t exitval = try_buf->exit_value;
-        free(try_buf);
-        RAISE(jbuff, exitval);
+    add_memory(jbuff, memt);
+    add_memory(jbuff, memf);
+    add_backtrace(jbuff);
+    parse_script(state, cond, condlen, jbuff);
+    if(state->stack.next < 1)
+        RAISE(jbuff, StackUnderflow);
+    state->stack.next -= 1;
+    if (state->stack.content[state->stack.next].type == BoolTrue) {
+        parse_script(state, memt, strlen(memt), jbuff);
+    } else if (state->stack.content[state->stack.next].type == BoolFalse){
+        parse_script(state, memf, strlen(memf), jbuff);
+    } else {
+        state->stack.next += 1;
+        RAISE(jbuff, InvalidOperands);
     }
-    free(memt);
-    free(memf);
-    free(try_buf);
+    remove_memory(jbuff, memt);
+    remove_memory(jbuff, memf);
+    remove_backtrace(jbuff);
 }
 
 void op_loop(struct ProgramState *state, struct ExceptionHandler *jbuff){
@@ -738,31 +907,21 @@ void op_loop(struct ProgramState *state, struct ExceptionHandler *jbuff){
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL) {
-        state->stack.next += 1;
-        RAISE(jbuff, ProgramPanic);
-    }
     char *mem = state->stack.content[state->stack.next].val.instr;
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
     while (1){
-        TRY(try_buf) {
-            parse_script(state, mem, strlen(mem), try_buf);
-            state->stack.next -= 1;
-            if (state->stack.content[state->stack.next].type == BoolFalse) {
-                break;
-            } else if (state->stack.content[state->stack.next].type != BoolTrue) {
-                state->stack.next += 1;
-                RAISE(try_buf, InvalidOperands);
-            }
-        }CATCHALL{
-            free(mem);
-            uint32_t exitval = try_buf->exit_value;
-            free(try_buf);
-            RAISE(jbuff, exitval);
+        parse_script(state, mem, strlen(mem), jbuff);
+        state->stack.next -= 1;
+        if (state->stack.content[state->stack.next].type == BoolFalse) {
+            break;
+        } else if (state->stack.content[state->stack.next].type != BoolTrue) {
+            state->stack.next += 1;
+            RAISE(jbuff, InvalidOperands);
         }
     }
-    free(mem);
-    free(try_buf);
+    remove_memory(jbuff, mem);
+    remove_backtrace(jbuff);
 }
 
 void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct ExceptionHandler *jbuff){
@@ -773,32 +932,22 @@ void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct Ex
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL){
-        state->stack.next += 1;
-        RAISE(jbuff, ProgramPanic);
-    }
     char *mem = state->stack.content[state->stack.next].val.instr;
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
     while (1){
-        TRY(try_buf) {
-            parse_script(state, cond, condlen, try_buf);
-            state->stack.next -= 1;
-            if(state->stack.content[state->stack.next].type == BoolFalse){
-                break;
-            }else if(state->stack.content[state->stack.next].type != BoolTrue){
-                state->stack.next += 1;
-                RAISE(try_buf, InvalidOperands);
-            }
-            parse_script(state, mem, strlen(mem), try_buf);
-        }CATCHALL{
-            free(mem);
-            uint32_t exitval = try_buf->exit_value;
-            free(try_buf);
-            RAISE(jbuff, exitval);
+        parse_script(state, cond, condlen, jbuff);
+        state->stack.next -= 1;
+        if(state->stack.content[state->stack.next].type == BoolFalse){
+            break;
+        }else if(state->stack.content[state->stack.next].type != BoolTrue){
+            state->stack.next += 1;
+            RAISE(jbuff, InvalidOperands);
         }
+        parse_script(state, mem, strlen(mem), jbuff);
     }
-    free(mem);
-    free(try_buf);
+    remove_memory(jbuff, mem);
+    remove_backtrace(jbuff);
 }
 
 void op_greather(struct ProgramState *state, struct ExceptionHandler *jbuff){
@@ -1055,9 +1204,31 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
     if (state->stack.next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t resindex = state->stack.next - 1;
-    if (state->stack.content[resindex].type == Instruction) {
-        size_t finallen = strlen(state->stack.content[resindex].val.instr) + 3;
-        char *resstr = malloc(finallen);
+    size_t finallen;
+    char *resstr;
+    char buffer[1];
+    int result;
+    switch (state->stack.content[resindex].type)
+    {
+    case String:
+        finallen = strlen(state->stack.content[resindex].val.instr) + 5;
+        resstr = malloc(finallen);
+        if (resstr == NULL) {
+            RAISE(jbuff, ProgramPanic);
+        } else {
+            strcpy(resstr + 2, state->stack.content[resindex].val.instr);
+            resstr[0] = '[';
+            resstr[1] = '"';
+            resstr[finallen - 3] = '"';
+            resstr[finallen - 2] = ']';
+            resstr[finallen - 1] = '\0';
+            free(state->stack.content[resindex].val.instr);
+            state->stack.content[resindex].val.instr = resstr;
+        }
+        break;
+    case Instruction:
+        finallen = strlen(state->stack.content[resindex].val.instr) + 3;
+        resstr = malloc(finallen);
         if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
@@ -1068,19 +1239,20 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
             free(state->stack.content[resindex].val.instr);
             state->stack.content[resindex].val.instr = resstr;
         }
-    }else if(state->stack.content[resindex].type == Integer){
-        size_t result = (int) log10((double)state->stack.content[resindex].val.ival + 1) + 1 + (state->stack.content[resindex].val.ival < 0);
-        char *resstr = malloc(result + 1);
+        break;
+    case Integer:
+        finallen = (int) log10((double)state->stack.content[resindex].val.ival + 1) + 1 + (state->stack.content[resindex].val.ival < 0);
+        resstr = malloc(finallen + 1);
         if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            snprintf(resstr, result + 1, "%ld", state->stack.content[resindex].val.ival);
+            snprintf(resstr, finallen + 1, "%ld", state->stack.content[resindex].val.ival);
             state->stack.content[resindex].val.instr = resstr;
             state->stack.content[resindex].type = Instruction;
         }
-    }else if(state->stack.content[resindex].type == Floating) {
-        char buffer[1];
-        int result = snprintf(buffer, 1, "%lf", state->stack.content[resindex].val.fval);
+        break;
+    case Floating:
+        result = snprintf(buffer, 1, "%lf", state->stack.content[resindex].val.fval);
         if (result < 1) {
             RAISE(jbuff, ProgramPanic);
         } else {
@@ -1094,15 +1266,8 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
                 state->stack.content[resindex].type = Instruction;
             }
         }
-    }else if(state->stack.content[resindex].type == BoolTrue){
-        state->stack.content[resindex].val.instr = malloc(5);
-        if (state->stack.content[resindex].val.instr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            strcpy(state->stack.content[resindex].val.instr, BOOL[0]);
-            state->stack.content[resindex].type = Instruction;
-        }
-    }else if(state->stack.content[resindex].type == BoolFalse) {
+        break;
+    case BoolFalse:
         state->stack.content[resindex].val.instr = malloc(6);
         if (state->stack.content[resindex].val.instr == NULL) {
             RAISE(jbuff, ProgramPanic);
@@ -1110,6 +1275,19 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
             strcpy(state->stack.content[resindex].val.instr, BOOL[1]);
             state->stack.content[resindex].type = Instruction;
         }
+        break;
+    case BoolTrue:
+        state->stack.content[resindex].val.instr = malloc(5);
+        if (state->stack.content[resindex].val.instr == NULL) {
+            RAISE(jbuff, ProgramPanic);
+        } else {
+            strcpy(state->stack.content[resindex].val.instr, BOOL[0]);
+            state->stack.content[resindex].type = Instruction;
+        }
+        break;
+    
+    default:
+        UNREACHABLE;
     }
 }
 
@@ -1121,7 +1299,7 @@ void op_try(struct ProgramState *state, struct ExceptionHandler *jbuff){
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
+    struct ExceptionHandler *try_buf = init_ExceptionHandler();
     if(try_buf == NULL) {
         state->stack.next += 1;
         RAISE(jbuff, ProgramPanic);
@@ -1330,21 +1508,23 @@ void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack.next < 2)
         RAISE(jbuff, StackUnderflow);
     state->stack.next -= 1;
-    if(state->stack.content[state->stack.next].type != Instruction || state->stack.content[state->stack.next - 1].type != Instruction){
+    if((state->stack.content[state->stack.next].type == Instruction && state->stack.content[state->stack.next - 1].type == Instruction)
+        || (state->stack.content[state->stack.next].type == String && state->stack.content[state->stack.next - 1].type == String)){
+        size_t lensecond = strlen(state->stack.content[state->stack.next].val.instr);
+        size_t lenfirst =  strlen(state->stack.content[state->stack.next - 1].val.instr);
+        char *composte = realloc(state->stack.content[state->stack.next - 1].val.instr, lensecond + lenfirst + 2);
+        if(composte == NULL){
+            RAISE(jbuff, ProgramPanic);
+        }
+        state->stack.content[state->stack.next - 1].val.instr = composte;
+        state->stack.content[state->stack.next - 1].val.instr[lenfirst] = ' ';
+        strcpy(state->stack.content[state->stack.next - 1].val.instr + lenfirst + 1, state->stack.content[state->stack.next].val.instr);
+        free(state->stack.content[state->stack.next].val.instr);
+        state->stack.content[state->stack.next - 1].val.instr[lensecond + lenfirst + 1] = '\0';
+    }else{
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    size_t lensecond = strlen(state->stack.content[state->stack.next].val.instr);
-    size_t lenfirst =  strlen(state->stack.content[state->stack.next - 1].val.instr);
-    char *composte = realloc(state->stack.content[state->stack.next - 1].val.instr, lensecond + lenfirst + 2);
-    if(composte == NULL){
-        RAISE(jbuff, ProgramPanic);
-    }
-    state->stack.content[state->stack.next - 1].val.instr = composte;
-    state->stack.content[state->stack.next - 1].val.instr[lenfirst] = ' ';
-    strcpy(state->stack.content[state->stack.next - 1].val.instr + lenfirst + 1, state->stack.content[state->stack.next].val.instr);
-    free(state->stack.content[state->stack.next].val.instr);
-    state->stack.content[state->stack.next - 1].val.instr[lensecond + lenfirst + 1] = '\0';
 }
 
 void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff){
@@ -1355,22 +1535,12 @@ void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff){
         state->stack.next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    struct ExceptionHandler *try_buf = malloc(sizeof(struct ExceptionHandler));
-    if(try_buf == NULL){
-        state->stack.next += 1;
-        RAISE(jbuff, ProgramPanic);
-    }
     char *mem = state->stack.content[state->stack.next].val.instr;
-    TRY(try_buf) {
-        parse_script(state, mem, strlen(mem), try_buf);
-    }CATCHALL{
-        free(mem);
-        uint32_t err = try_buf->exit_value;
-        free(try_buf);
-        RAISE(jbuff, err);
-    }
-    free(mem);
-    free(try_buf);
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
+    parse_script(state, mem, strlen(mem), jbuff);
+    remove_memory(jbuff, mem);
+    remove_backtrace(jbuff);
 }
 
 void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff){
@@ -1380,19 +1550,23 @@ void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff){
     size_t resindex = state->stack.next - 1;
     enum ElemType result;
     result = BoolFalse;
-    if(state->stack.content[state->stack.next].type == Instruction){
+    switch (state->stack.content[state->stack.next].type)
+    {
+    case String:
+        if(state->stack.content[resindex].type == String) {
+            if (strcmp(state->stack.content[state->stack.next].val.instr, state->stack.content[resindex].val.instr) == 0)
+                result = BoolTrue;
+            free(state->stack.content[state->stack.next].val.instr);
+        }
+        break;
+    case Instruction:
         if(state->stack.content[resindex].type == Instruction) {
             if (strcmp(state->stack.content[state->stack.next].val.instr, state->stack.content[resindex].val.instr) == 0)
                 result = BoolTrue;
-            free(state->stack.content[resindex].val.instr);
+            free(state->stack.content[state->stack.next].val.instr);
         }
-        free(state->stack.content[state->stack.next].val.instr);
-    }else if(state->stack.content[resindex].type == Instruction){
-        free(state->stack.content[resindex].val.instr);
-    }else if((state->stack.content[state->stack.next].type == BoolTrue && state->stack.content[resindex].type == BoolTrue) ||
-             (state->stack.content[state->stack.next].type == BoolFalse && state->stack.content[resindex].type == BoolFalse)){
-        result = BoolTrue;
-    }else if(state->stack.content[state->stack.next].type == Integer){
+        break;
+    case Integer:
         if(state->stack.content[resindex].type == Integer){
             if(state->stack.content[state->stack.next].val.ival == state->stack.content[resindex].val.ival)
                 result = BoolTrue;
@@ -1400,7 +1574,8 @@ void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff){
             if((double) state->stack.content[state->stack.next].val.ival == state->stack.content[resindex].val.fval)
                 result = BoolTrue;
         }
-    }else if(state->stack.content[state->stack.next].type == Floating){
+        break;
+    case Floating:
         if(state->stack.content[resindex].type == Integer){
             if(state->stack.content[state->stack.next].val.fval == (double) state->stack.content[resindex].val.ival)
                 result = BoolTrue;
@@ -1408,6 +1583,18 @@ void op_equal(struct ProgramState *state, struct ExceptionHandler *jbuff){
             if(state->stack.content[state->stack.next].val.fval == state->stack.content[resindex].val.fval)
                 result = BoolTrue;
         }
+        break;
+    case BoolFalse:
+    case BoolTrue:
+        if(state->stack.content[state->stack.next].type == state->stack.content[resindex].type){
+            result = BoolTrue;
+        }
+        break;
+    default:
+        UNREACHABLE;
+    }
+    if(state->stack.content[resindex].type == Instruction || state->stack.content[resindex].type == String){
+        free(state->stack.content[resindex].val.instr);
     }
     state->stack.content[resindex].type = result;
     state->stack.content[resindex].val.instr = NULL;
@@ -1420,19 +1607,23 @@ void op_notequal(struct ProgramState *state, struct ExceptionHandler *jbuff){
     state->stack.next -= 1;
     size_t resindex = state->stack.next - 1;
     enum ElemType result = BoolTrue;
-    if(state->stack.content[state->stack.next].type == Instruction){
+    switch (state->stack.content[state->stack.next].type)
+    {
+    case String:
+        if(state->stack.content[resindex].type == String) {
+            if (strcmp(state->stack.content[state->stack.next].val.instr, state->stack.content[resindex].val.instr) == 0)
+                result = BoolFalse;
+            free(state->stack.content[state->stack.next].val.instr);
+        }
+        break;
+    case Instruction:
         if(state->stack.content[resindex].type == Instruction) {
             if (strcmp(state->stack.content[state->stack.next].val.instr, state->stack.content[resindex].val.instr) == 0)
                 result = BoolFalse;
-            free(state->stack.content[resindex].val.instr);
+            free(state->stack.content[state->stack.next].val.instr);
         }
-        free(state->stack.content[resindex].val.instr);
-    }else if(state->stack.content[resindex].type == Instruction){
-        free(state->stack.content[resindex].val.instr);
-    }else if((state->stack.content[state->stack.next].type == BoolTrue && state->stack.content[resindex].type == BoolTrue) ||
-             (state->stack.content[state->stack.next].type == BoolFalse && state->stack.content[resindex].type == BoolFalse)){
-        result = BoolFalse;
-    }else if(state->stack.content[state->stack.next].type == Integer){
+        break;
+    case Integer:
         if(state->stack.content[resindex].type == Integer){
             if(state->stack.content[state->stack.next].val.ival == state->stack.content[resindex].val.ival)
                 result = BoolFalse;
@@ -1440,7 +1631,8 @@ void op_notequal(struct ProgramState *state, struct ExceptionHandler *jbuff){
             if((double) state->stack.content[state->stack.next].val.ival == state->stack.content[resindex].val.fval)
                 result = BoolFalse;
         }
-    }else if(state->stack.content[state->stack.next].type == Floating){
+        break;
+    case Floating:
         if(state->stack.content[resindex].type == Integer){
             if(state->stack.content[state->stack.next].val.fval == (double) state->stack.content[resindex].val.ival)
                 result = BoolFalse;
@@ -1448,6 +1640,18 @@ void op_notequal(struct ProgramState *state, struct ExceptionHandler *jbuff){
             if(state->stack.content[state->stack.next].val.fval == state->stack.content[resindex].val.fval)
                 result = BoolFalse;
         }
+        break;
+    case BoolFalse:
+    case BoolTrue:
+        if(state->stack.content[state->stack.next].type == state->stack.content[resindex].type){
+            result = BoolFalse;
+        }
+        break;
+    default:
+        UNREACHABLE;
+    }
+    if(state->stack.content[resindex].type == Instruction || state->stack.content[resindex].type == String){
+        free(state->stack.content[resindex].val.instr);
     }
     state->stack.content[resindex].type = result;
     state->stack.content[resindex].val.instr = NULL;
@@ -1512,7 +1716,7 @@ void numop_dup(struct ProgramState *state, size_t num, struct ExceptionHandler *
     struct StackElem copy;
     size_t index = state->stack.next - 1 - num;
     copy.type = state->stack.content[index].type;
-    if (copy.type == Instruction) {
+    if (copy.type == Instruction || copy.type == String) {
         size_t srclen = strlen(state->stack.content[index].val.instr) + 1;
         copy.val.instr = malloc(srclen);
         if (copy.val.instr == NULL)
@@ -1547,7 +1751,7 @@ void brop_dup(struct ProgramState *state, char *comand, size_t clen, struct Exce
         struct StackElem copy;
         size_t index = state->stack.next - 1 - state->stack.content[state->stack.next].val.ival;
         copy.type = state->stack.content[index].type;
-        if (copy.type == Instruction) {
+        if (copy.type == Instruction || copy.type == String) {
             size_t srclen = strlen(state->stack.content[index].val.instr) + 1;
             copy.val.instr = malloc(srclen);
             memcpy(copy.val.instr, state->stack.content[index].val.instr, srclen);
@@ -1588,13 +1792,13 @@ void op_drop(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack.next == 0)
         RAISE(jbuff, StackUnderflow);
     state->stack.next -= 1;
-    if(state->stack.content[state->stack.next].type == Instruction)
+    if(state->stack.content[state->stack.next].type == Instruction || state->stack.content[state->stack.next].type == String)
         free(state->stack.content[state->stack.next].val.instr);
 }
 
 void op_clear(struct ProgramState *state, struct ExceptionHandler *jbuff){
     for(size_t i = 0; i < state->stack.next; i++){
-        if(state->stack.content[i].type == Instruction)
+        if(state->stack.content[i].type == Instruction || state->stack.content[i].type == String)
             free(state->stack.content[i].val.instr);
     }
     state->stack.next = 0;

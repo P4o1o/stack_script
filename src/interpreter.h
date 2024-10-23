@@ -58,6 +58,7 @@ void op_quote(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_roll(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_compose(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_top(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_int(struct ProgramState* state, struct ExceptionHandler* jbuff);
@@ -99,6 +100,8 @@ void brop_times(struct ProgramState* state, char* number, size_t numberlen, stru
 void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff);
 void brop_swap(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
 void brop_dup(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
+void brop_split(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
+void brop_compose(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
 
 void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
 void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
