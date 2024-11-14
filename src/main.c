@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
             load_file(&state, argv[1]);
         }
     }
+    printf("STACK_SCRIPT\n-------------------------------------------\n");
     char bufferin[BUFFERSIZE];
     while(1){
         printf(">");
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
             print_Exception(try_buf);
             reload_Exceptionhandler(try_buf);
         }
-        size_t elem_to_print = MIN(size, state.stack.next);
+        size_t elem_to_print = MIN(size, state.stack->next);
         print_stack(&state, elem_to_print);
     }
     free_ExceptionHandler(try_buf);

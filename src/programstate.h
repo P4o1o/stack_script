@@ -22,13 +22,14 @@ struct ExceptionHandler{
     size_t bt_capacity;
     struct OpenMemMap **openmemmap;
 };
+
 #define OM_VEC_CAPACITY 32
 #define BT_VEC_CAPACITY 32
 
-#define TRY(EXCHANDLER) if ((EXCHANDLER->exit_value = setjmp(EXCHANDLER->buffer)) == 0)
-#define CATCH(EXCHANDLER, EXCNUM) else if (EXCHANDLER->exit_value == EXCNUM)
+#define TRY(EXCHANDLER) if (((EXCHANDLER)->exit_value = setjmp((EXCHANDLER)->buffer)) == 0)
+#define CATCH(EXCHANDLER, EXCNUM) else if ((EXCHANDLER)->exit_value == (EXCNUM))
 #define CATCHALL else
-#define RAISE(EXCHANDLER, EXCNUM) longjmp(EXCHANDLER->buffer, EXCNUM)
+#define RAISE(EXCHANDLER, EXCNUM) longjmp((EXCHANDLER)->buffer, (EXCNUM))
 
 #define ProgramOk 0
 #define ProgramExit 1
@@ -48,7 +49,7 @@ struct ExceptionHandler{
 void print_Exception(struct ExceptionHandler* exc);
 
 struct ProgramState{
-    struct Stack stack;
+    struct Stack *stack;
     struct Environment env;
 };
 

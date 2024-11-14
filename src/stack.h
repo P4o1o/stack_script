@@ -26,15 +26,18 @@ enum ElemType{
     Instruction,
     Integer,
     Floating,
-    BoolTrue,
-    BoolFalse,
-    String
+    Boolean,
+    String,
+    Type,
+    None,
+    InnerStack
 };
 
 union ElemVal{
     char *instr;
     int64_t ival;
     double fval;
+    struct Stack *stack;
 };
 
 struct StackElem{
