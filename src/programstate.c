@@ -15,19 +15,19 @@ static struct Stack *init_Stack(const size_t capacity){
     return res;
 }
 
-static inline void free_Stack(struct Stack *stack){
+inline void free_Stack(struct Stack *stack){
     for(size_t i = 0; i < stack->next; i++){
         if (stack->content[i].type == Instruction || stack->content[i].type == String) {
             free(stack->content[i].val.instr);
         }
         if (stack->content[i].type == InnerStack) {
             free_Stack(stack->content[i].val.stack);
-            free(stack->content[i].val.stack);
         }
     }
     free(stack->content);
     stack->capacity = 0;
     stack->next = 0;
+    free(stack);
 }
 
 static inline struct Environment init_Environment(size_t capacity){
@@ -64,7 +64,6 @@ struct ProgramState init_PrgState(size_t stack_capacity, size_t env_capacity){
 
 void free_PrgState(struct ProgramState *inter){
     free_Stack(inter->stack);
-    free(inter->stack);
     free_Environment(inter->env);
 }
 
@@ -129,6 +128,9 @@ void print_Exception(struct ExceptionHandler *exc) {
             break;
         case RoundParenthesisError:
             excstr = "Squared Parenthesis number mismatch";
+            break;
+        case CurlyParenthesisError:
+            excstr = "Curly Parenthesis number mismatch";
             break;
         case StringQuotingError:
             excstr = "String quoting marks number mismatch";

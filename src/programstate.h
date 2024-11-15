@@ -45,6 +45,7 @@ struct ExceptionHandler{
 #define RoundParenthesisError 11
 #define SquaredParenthesisError 12
 #define StringQuotingError 13
+#define CurlyParenthesisError 14
 
 void print_Exception(struct ExceptionHandler* exc);
 
@@ -62,6 +63,7 @@ typedef void (*num_operations)(struct ProgramState*, size_t, struct ExceptionHan
 struct ProgramState init_PrgState(size_t stack_capacity, size_t env_capacity);
 void reload_Exceptionhandler(struct ExceptionHandler *try_buf);
 void free_PrgState(struct ProgramState *inter);
+void free_Stack(struct Stack *stack);
 
 struct ExceptionHandler *init_ExceptionHandler();
 void free_ExceptionHandler(struct ExceptionHandler *exh);

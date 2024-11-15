@@ -20,8 +20,6 @@
 #endif
 #endif
 
-#include "memdebug.h"
-
 enum ElemType{
     Instruction,
     Integer,

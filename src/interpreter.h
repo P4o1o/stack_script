@@ -80,6 +80,7 @@ void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_compose(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_top(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_compress(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_push(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_pop(struct ProgramState* state, struct ExceptionHandler* jbuff);

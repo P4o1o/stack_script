@@ -112,6 +112,5 @@ int main(int argc, char *argv[]) {
     free_ExceptionHandler(try_buf);
     free_PrgState(&state);
     free_builtins();
-    print_allocated_mem();
     return 0;
 }
