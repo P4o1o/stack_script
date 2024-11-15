@@ -68,4 +68,19 @@ void free_Stack(struct Stack *stack);
 struct ExceptionHandler *init_ExceptionHandler();
 void free_ExceptionHandler(struct ExceptionHandler *exh);
 
+static inline void push_Stack(struct Stack *stack, const struct StackElem val, struct ExceptionHandler *jbuff){
+    if(stack->next + 1 == stack->capacity){
+        stack->capacity = stack->capacity << 1;
+        struct StackElem *newmem = realloc(stack->content, stack->capacity);
+        if(newmem == NULL){
+            if(val.type == Instruction)
+                free(val.val.instr);
+            RAISE(jbuff, ProgramPanic);
+        }
+        stack->content = newmem;
+    }
+    stack->content[stack->next] = val;
+    stack->next += 1;
+}
+
 #endif //SSCRIPT_PROGRAMSTATE_H

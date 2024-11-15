@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "interpreter.h"
-#include "buildutils.h"
 #define BUFFERSIZE 256
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
