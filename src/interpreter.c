@@ -231,6 +231,40 @@ static inline int remove_Environment(struct Environment* env, const char* key, s
     return 0;
 }
 
+static inline void print_InnerStack(struct Stack *stack){
+    printf("{ ");
+    for(size_t i = 0; i< stack->next; i++){
+        switch (stack->content[i].type){
+            case Instruction:
+                printf("[ %s ] ", stack->content[i].val.instr);
+                break;
+            case String:
+                printf("\"%s\" ", stack->content[i].val.instr);
+                break;
+            case Integer:
+                printf("%ld ", stack->content[i].val.ival);
+                break;
+            case Floating:
+                printf("%lf ", stack->content[i].val.fval);
+                break;
+            case Boolean:
+                printf("%s ", BOOL[stack->content[i].val.ival]);
+                break;
+            case None:
+                printf("none\n");
+                break;
+            case Type:
+                printf("%s ", TYPES[stack->content[i].val.ival]);
+                break;
+            case InnerStack:
+                print_InnerStack(stack->content[i].val.stack);
+                break;
+            default:
+                UNREACHABLE;
+            }
+        }
+    printf("} ");
+}
 
 static inline void print_single(struct Stack *stack, size_t num){
     switch (stack->content[stack->next - num].type)
@@ -257,7 +291,8 @@ static inline void print_single(struct Stack *stack, size_t num){
         printf("%s\n", TYPES[stack->content[stack->next - num].val.ival]);
         break;
     case InnerStack:
-        printf("stack(size=%lld)\n", stack->content[stack->next - num].val.stack->next);
+        print_InnerStack(stack->content[stack->next - num].val.stack);
+        printf("\n");
         break;
     default:
         UNREACHABLE;
