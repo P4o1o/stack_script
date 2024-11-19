@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "stack.h"
 #include "environment.h"
+#include "primitives.h"
 #include <setjmp.h>
 
 struct OpenMemMap{
@@ -81,6 +82,42 @@ static inline void push_Stack(struct Stack *stack, const struct StackElem val, s
     }
     stack->content[stack->next] = val;
     stack->next += 1;
+}
+
+
+static inline void copy_Stack(struct Stack *dest, struct Stack *src, struct ExceptionHandler *jbuff){
+    dest->capacity = src->capacity;
+    dest->next = src->next;
+    dest->content = malloc(sizeof(struct StackElem) * src->capacity);
+    if(dest->content == NULL)
+        RAISE(jbuff, ProgramPanic);
+    for(size_t i = 0; i < src->next; i++){
+        dest->content[i].type = src->content[i].type;
+        switch(src->content[i].type){
+            case String:
+            case Instruction:
+                dest->content[i].val.instr = malloc(strlen(src->content[i].val.instr) + 1);
+                if (dest->content[i].val.instr == NULL)
+                    RAISE(jbuff, ProgramPanic);
+                memcpy(dest->content[i].val.instr, src->content[i].val.instr, strlen(src->content[i].val.instr) + 1);
+                break;
+            case Type:
+            case Boolean:
+            case Integer:
+                dest->content[i].val.ival == src->content[i].val.ival;
+                break;
+            case Floating:
+                dest->content[i].val.fval == src->content[i].val.fval;
+            case None:
+                dest->content[i].val.ival == 0;
+                break;
+            case InnerStack:
+                copy_Stack(dest->content[i].val.stack, src->content[i].val.stack, jbuff);
+                break;
+            default:
+                UNREACHABLE;
+        }
+    }
 }
 
 #endif //SSCRIPT_PROGRAMSTATE_H

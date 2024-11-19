@@ -7,39 +7,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
-const char *NONE = "none";
-
-const char *BOOL[] = {
-        "false",
-        "true",
-};
-
 #define INNER_STACK_CAPACITY 256
 
-const char *TYPES[] = {
-        "INSTR",
-        "INT",
-        "FLOAT",
-        "BOOL",
-        "STR",
-        "TYPE",
-        "NONE",
-        "STACK"
-};
-
-const size_t TYPES_LEN[] = {
-    5,
-    3,
-    5,
-    4,
-    3,
-    4,
-    4,
-    5
-};
-
 const char *NUMBERED_INSTR[] = {
-        "dup", "swap", "dig"
+        "dup", "swap", "dig", "inject", "pinject"
 };
 
 #define BRACKETS_SIZE 12
@@ -87,7 +58,7 @@ const br_operations BR_INSTR_OP[] ={
 };
 
 const num_operations NUM_INSTR_OP[] = {
-        numop_dup, numop_swap, numop_dig
+        numop_dup, numop_swap, numop_dig, numop_inject, numop_pinject
 };
 
 #define IS_INDENT(comand) ((int) ((comand) == ' ' || (comand) == '\n' || (comand) == '\t' || (comand) == '\r' || (comand) == '\0'))
@@ -172,6 +143,7 @@ void free_builtins() {
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
 #define HASHKEY0 0x734bc7ed439782a3ULL
 #define HASHKEY1 0x542f7629b02ac4deULL
 
@@ -213,91 +185,6 @@ static inline int get_Environment(struct Environment* env, const char* key, size
     return 0;
 }
 
-static inline int remove_Environment(struct Environment* env, const char* key, size_t keylen) {
-    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
-    struct EnvElem** elem_ptr = &env->content[index];
-    struct EnvElem* elem = *elem_ptr;
-    while (elem != NULL) {
-        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
-            free(elem->key);
-            free(elem->value);
-            *elem_ptr = elem->next;
-            free(elem);
-            return 1;
-        }
-        elem_ptr = &elem->next;
-        elem = *elem_ptr;
-    }
-    return 0;
-}
-
-static inline void print_InnerStack(struct Stack *stack){
-    printf("{ ");
-    for(size_t i = 0; i< stack->next; i++){
-        switch (stack->content[i].type){
-            case Instruction:
-                printf("[ %s ] ", stack->content[i].val.instr);
-                break;
-            case String:
-                printf("\"%s\" ", stack->content[i].val.instr);
-                break;
-            case Integer:
-                printf("%ld ", stack->content[i].val.ival);
-                break;
-            case Floating:
-                printf("%lf ", stack->content[i].val.fval);
-                break;
-            case Boolean:
-                printf("%s ", BOOL[stack->content[i].val.ival]);
-                break;
-            case None:
-                printf("none\n");
-                break;
-            case Type:
-                printf("%s ", TYPES[stack->content[i].val.ival]);
-                break;
-            case InnerStack:
-                print_InnerStack(stack->content[i].val.stack);
-                break;
-            default:
-                UNREACHABLE;
-            }
-        }
-    printf("} ");
-}
-
-static inline void print_single(struct Stack *stack, size_t num){
-    switch (stack->content[stack->next - num].type)
-    {
-    case Instruction:
-        printf("[ %s ]\n", stack->content[stack->next - num].val.instr);
-        break;
-    case String:
-        printf("\"%s\"\n", stack->content[stack->next - num].val.instr);
-        break;
-    case Integer:
-        printf("%ld\n", stack->content[stack->next - num].val.ival);
-        break;
-    case Floating:
-        printf("%lf\n", stack->content[stack->next - num].val.fval);
-        break;
-    case Boolean:
-        printf("%s\n", BOOL[stack->content[stack->next - num].val.ival]);
-        break;
-    case None:
-        printf("none\n");
-        break;
-    case Type:
-        printf("%s\n", TYPES[stack->content[stack->next - num].val.ival]);
-        break;
-    case InnerStack:
-        print_InnerStack(stack->content[stack->next - num].val.stack);
-        printf("\n");
-        break;
-    default:
-        UNREACHABLE;
-    }
-}
 
 inline void add_backtrace(struct ExceptionHandler *jbuff){
     jbuff->bt_size += 1;
@@ -433,7 +320,7 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
                 }
                 elem = elem->next;
             }
-            for (short i = 0; i < 3; i++) {
+            for (short i = 0; i < 5; i++) {
                 size_t nilen = strlen(NUMBERED_INSTR[i]);
                 if (strncmp(NUMBERED_INSTR[i], instr, nilen) == 0) {
                     size_t number = strtol(instr + nilen, &endptr, 10);
@@ -462,6 +349,7 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
 }
 
 void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff){
+    jbuff->not_exec[jbuff->bt_size - 1] = comands;
     size_t start = 0;
     size_t quote = 0;
     size_t round_br = 0;
@@ -535,15 +423,38 @@ void execute(struct ProgramState *state, char *comands, struct ExceptionHandler 
     parse_script(state, comands, strlen(comands), jbuff);
 }
 
-void print_stack(struct ProgramState* state, size_t num_elem) {
-    for (size_t i = num_elem; i > 0; i--) {
-        print_single(state->stack, i);
+//------------------------------------------------------------------------------------------------------
+
+void brop_split(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
+    add_backtrace(jbuff);
+    parse_script(state, comand, clen, jbuff);
+    remove_backtrace(jbuff);
+    if(state->stack->next < 2)
+        RAISE(jbuff, StackUnderflow);
+    state->stack->next -= 1;
+    struct StackElem delimiter = state->stack->content[state->stack->next];
+    state->stack->next -= 1;
+    struct StackElem string = state->stack->content[state->stack->next];
+    if(delimiter.type == String && string.type == String) {
+        char *token = strtok(string.val.instr, " ");
+        do{
+            struct StackElem elem;
+            elem.type = String;
+            size_t tokenlen = strlen(token);
+            elem.val.instr = malloc(tokenlen + 1);
+             if (elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, token, tokenlen);
+            elem.val.instr[tokenlen] = '\0';
+            push_Stack(state->stack, elem, jbuff);
+        }while((token = strtok(NULL, delimiter.val.instr)) != NULL);
+        free(string.val.instr);
+        free(delimiter.val.instr);
+    }else{
+        state->stack->next += 1;
+        RAISE(jbuff, InvalidOperands);
     }
 }
-
-
-
-//------------------------------------------------------------------------------------------------------
 
 void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff){
     if (state->stack->next == 0)
@@ -655,37 +566,6 @@ void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff){
     }
 }
 
-void brop_split(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
-    add_backtrace(jbuff);
-    parse_script(state, comand, clen, jbuff);
-    remove_backtrace(jbuff);
-    if(state->stack->next < 2)
-        RAISE(jbuff, StackUnderflow);
-    state->stack->next -= 1;
-    struct StackElem delimiter = state->stack->content[state->stack->next];
-    state->stack->next -= 1;
-    struct StackElem string = state->stack->content[state->stack->next];
-    if(delimiter.type == String && string.type == String) {
-        char *token = strtok(string.val.instr, " ");
-        do{
-            struct StackElem elem;
-            elem.type = String;
-            size_t tokenlen = strlen(token);
-            elem.val.instr = malloc(tokenlen + 1);
-             if (elem.val.instr == NULL)
-                RAISE(jbuff, ProgramPanic);
-            strncpy(elem.val.instr, token, tokenlen);
-            elem.val.instr[tokenlen] = '\0';
-            push_Stack(state->stack, elem, jbuff);
-        }while((token = strtok(NULL, delimiter.val.instr)) != NULL);
-        free(string.val.instr);
-        free(delimiter.val.instr);
-    }else{
-        state->stack->next += 1;
-        RAISE(jbuff, InvalidOperands);
-    }
-}
-
 void brop_compose(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
     add_backtrace(jbuff);
     parse_script(state, comand, clen, jbuff);
@@ -777,6 +657,59 @@ void op_inject(struct ProgramState* state, struct ExceptionHandler* jbuff){
     remove_memory(jbuff, mem);
 }
 
+void numop_inject(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff) {
+    if (state->stack->next < num + 1)
+        RAISE(jbuff, StackUnderflow);
+    state->stack->next -= 1;
+    if(state->stack->content[state->stack->next].type != Instruction){
+        state->stack->next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+    char *mem = state->stack->content[state->stack->next].val.instr;
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
+    for(size_t i = state->stack->next - num; i < state->stack->next; i++){
+        if(state->stack->content[i].type != InnerStack){
+            state->stack->next += 1;
+            RAISE(jbuff, InvalidOperands);
+        }
+        struct ProgramState stat;
+        stat.stack = state->stack->content[i].val.stack;
+        stat.env = state->env;
+        parse_script(&stat, mem, strlen(mem), jbuff);
+    }
+    remove_backtrace(jbuff);
+    remove_memory(jbuff, mem);
+}
+
+void numop_pinject(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff) {
+if (state->stack->next < num + 1)
+        RAISE(jbuff, StackUnderflow);
+    state->stack->next -= 1;
+    if(state->stack->content[state->stack->next].type != Instruction){
+        state->stack->next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+    for(size_t i = state->stack->next - num; i < state->stack->next; i++){
+        if(state->stack->content[i].type != InnerStack){
+            state->stack->next += 1;
+            RAISE(jbuff, InvalidOperands);
+        }
+    }
+    char *mem = state->stack->content[state->stack->next].val.instr;
+    add_memory(jbuff, mem);
+    add_backtrace(jbuff);
+#pragma omp parallel for schedule(dynamic)
+    for(size_t i = state->stack->next - num; i < state->stack->next; i++){
+        struct ProgramState stat;
+        stat.stack = state->stack->content[i].val.stack;
+        stat.env = state->env;
+        parse_script(&stat, mem, strlen(mem), jbuff);
+    }
+    remove_backtrace(jbuff);
+    remove_memory(jbuff, mem);
+}
+
 void op_compress(struct ProgramState* state, struct ExceptionHandler* jbuff){
     struct StackElem res = new_Stack(jbuff);
     for(size_t i = 0; i < state->stack->next; i++){
@@ -811,31 +744,6 @@ void brop_times(struct ProgramState* state, char* number, size_t numberlen, stru
     }
     remove_backtrace(jbuff);
     remove_memory(jbuff, mem);
-}
-
-
-void brop_isdef(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
-    struct StackElem elem;
-    elem.type = Boolean;
-    char **out = malloc(sizeof(char *));
-    elem.val.ival = get_Environment(&state->env, funcname, fnlen, out);
-    free(out);
-    push_Stack(state->stack, elem, jbuff);
-}
-
-void brop_define(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
-    if(state->stack->next == 0)
-        RAISE(jbuff, StackUnderflow);
-    state->stack->next -= 1;
-    if(state->stack->content[state->stack->next].type != Instruction) {
-        state->stack->next += 1;
-        RAISE(jbuff, InvalidOperands);
-    }
-    set_Environment(&state->env, funcname, fnlen, state->stack->content[state->stack->next].val.instr, jbuff);
-}
-
-void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
-    remove_Environment(&state->env, funcname, fnlen);
 }
 
 void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff){
@@ -1096,118 +1004,6 @@ void brop_loop(struct ProgramState *state, char *cond, size_t condlen, struct Ex
     remove_backtrace(jbuff);
 }
 
-void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
-    if (state->stack->next == 0)
-        RAISE(jbuff, StackUnderflow);
-    size_t resindex = state->stack->next - 1;
-    size_t finallen;
-    char *resstr;
-    char buffer[1];
-    int result;
-    switch (state->stack->content[resindex].type)
-    {
-    case String:
-        finallen = strlen(state->stack->content[resindex].val.instr) + 5;
-        resstr = malloc(finallen);
-        if (resstr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            strcpy(resstr + 2, state->stack->content[resindex].val.instr);
-            resstr[0] = '[';
-            resstr[1] = '"';
-            resstr[finallen - 3] = '"';
-            resstr[finallen - 2] = ']';
-            resstr[finallen - 1] = '\0';
-            free(state->stack->content[resindex].val.instr);
-            state->stack->content[resindex].val.instr = resstr;
-        }
-        break;
-    case Instruction:
-        finallen = strlen(state->stack->content[resindex].val.instr) + 3;
-        resstr = malloc(finallen);
-        if (resstr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            strcpy(resstr + 1, state->stack->content[resindex].val.instr);
-            resstr[0] = '[';
-            resstr[finallen - 2] = ']';
-            resstr[finallen - 1] = '\0';
-            free(state->stack->content[resindex].val.instr);
-            state->stack->content[resindex].val.instr = resstr;
-        }
-        break;
-    case Integer:
-        finallen = (int) log10((double)state->stack->content[resindex].val.ival + 1) + 1 + (state->stack->content[resindex].val.ival < 0);
-        resstr = malloc(finallen + 3);
-        if (resstr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            snprintf(resstr, finallen + 3, "[%ld]", state->stack->content[resindex].val.ival);
-            state->stack->content[resindex].val.instr = resstr;
-            state->stack->content[resindex].type = Instruction;
-        }
-        break;
-    case Floating:
-        result = snprintf(buffer, 1, "%lf", state->stack->content[resindex].val.fval);
-        if (result < 1) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            char *resstr = malloc(result + 3);
-            if (resstr == NULL) {
-                RAISE(jbuff, ProgramPanic);
-            } else {
-                snprintf(resstr, result + 3, "[%lf]", state->stack->content[resindex].val.fval);
-                state->stack->content[resindex].val.instr = resstr;
-                state->stack->content[resindex].type = Instruction;
-            }
-        }
-        break;
-    case Boolean:
-        result = state->stack->content[resindex].val.ival;
-        state->stack->content[resindex].val.instr = malloc(8 - result);
-        if (state->stack->content[resindex].val.instr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, BOOL[result], 5 - result);
-            state->stack->content[resindex].val.instr[6 - result] = ']';
-            state->stack->content[resindex].val.instr[7 - result] = '\0';
-            state->stack->content[resindex].type = Instruction;
-        }
-        break;
-    case None:
-        state->stack->content[resindex].val.instr = malloc(7);
-        if (state->stack->content[resindex].val.instr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, NONE, 4);
-            state->stack->content[resindex].val.instr[6] = ']';
-            state->stack->content[resindex].val.instr[7] = '\0';
-            state->stack->content[resindex].type = Instruction;
-        }
-        break;
-    case Type:
-        result = state->stack->content[resindex].val.ival;
-        state->stack->content[resindex].val.instr = malloc(TYPES_LEN[result] + 3);
-        if (state->stack->content[resindex].val.instr == NULL) {
-            RAISE(jbuff, ProgramPanic);
-        } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, TYPES[result], TYPES_LEN[result]);
-            state->stack->content[resindex].val.instr[TYPES_LEN[result] + 1] = ']';
-            state->stack->content[resindex].val.instr[TYPES_LEN[result] + 2] = '\0';
-            state->stack->content[resindex].type = Instruction;
-        }
-    break;
-    case InnerStack:
-        RAISE(jbuff, InvalidOperands);
-        break;
-    default:
-        UNREACHABLE;
-    }
-}
-
 void op_try(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
@@ -1235,29 +1031,6 @@ void op_try(struct ProgramState *state, struct ExceptionHandler *jbuff){
     push_Stack(state->stack, result, jbuff);
 }
 
-void op_compose(struct ProgramState *state, struct ExceptionHandler *jbuff){
-    if(state->stack->next < 2)
-        RAISE(jbuff, StackUnderflow);
-    state->stack->next -= 1;
-    if((state->stack->content[state->stack->next].type == Instruction && state->stack->content[state->stack->next - 1].type == Instruction)
-        || (state->stack->content[state->stack->next].type == String && state->stack->content[state->stack->next - 1].type == String)){
-        size_t lensecond = strlen(state->stack->content[state->stack->next].val.instr);
-        size_t lenfirst =  strlen(state->stack->content[state->stack->next - 1].val.instr);
-        char *composte = realloc(state->stack->content[state->stack->next - 1].val.instr, lensecond + lenfirst + 2);
-        if(composte == NULL){
-            RAISE(jbuff, ProgramPanic);
-        }
-        state->stack->content[state->stack->next - 1].val.instr = composte;
-        state->stack->content[state->stack->next - 1].val.instr[lenfirst] = ' ';
-        strcpy(state->stack->content[state->stack->next - 1].val.instr + lenfirst + 1, state->stack->content[state->stack->next].val.instr);
-        free(state->stack->content[state->stack->next].val.instr);
-        state->stack->content[state->stack->next - 1].val.instr[lensecond + lenfirst + 1] = '\0';
-    }else{
-        state->stack->next += 1;
-        RAISE(jbuff, InvalidOperands);
-    }
-}
-
 void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
@@ -1272,25 +1045,6 @@ void op_apply(struct ProgramState *state, struct ExceptionHandler *jbuff){
     parse_script(state, mem, strlen(mem), jbuff);
     remove_memory(jbuff, mem);
     remove_backtrace(jbuff);
-}
-
-void op_nop(struct ProgramState *state, struct ExceptionHandler *jbuff){
-    return;
-}
-
-void op_exit(struct ProgramState *state, struct ExceptionHandler *jbuff){
-    RAISE(jbuff, ProgramExit);
-}
-
-void op_print(struct ProgramState *state, struct ExceptionHandler *jbuff){
-    if(state->stack->next != 0)
-        print_single(state->stack, 1);
-}
-
-void op_printall(struct ProgramState *state, struct ExceptionHandler *jbuff){
-    for(size_t i = state->stack->next; i > 0; i--){
-        print_single(state->stack, i);
-    }
 }
 
 void brop_dup(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff){
@@ -1364,4 +1118,47 @@ void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct
     }
     state->stack->content[index] = temp;
     remove_backtrace(jbuff);
+}
+
+
+static inline int remove_Environment(struct Environment* env, const char* key, size_t keylen) {
+    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
+    struct EnvElem** elem_ptr = &env->content[index];
+    struct EnvElem* elem = *elem_ptr;
+    while (elem != NULL) {
+        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
+            free(elem->key);
+            free(elem->value);
+            *elem_ptr = elem->next;
+            free(elem);
+            return 1;
+        }
+        elem_ptr = &elem->next;
+        elem = *elem_ptr;
+    }
+    return 0;
+}
+
+void brop_isdef(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
+    struct StackElem elem;
+    elem.type = Boolean;
+    char **out = malloc(sizeof(char *));
+    elem.val.ival = get_Environment(&state->env, funcname, fnlen, out);
+    free(out);
+    push_Stack(state->stack, elem, jbuff);
+}
+
+void brop_define(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    state->stack->next -= 1;
+    if(state->stack->content[state->stack->next].type != Instruction) {
+        state->stack->next += 1;
+        RAISE(jbuff, InvalidOperands);
+    }
+    set_Environment(&state->env, funcname, fnlen, state->stack->content[state->stack->next].val.instr, jbuff);
+}
+
+void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
+    remove_Environment(&state->env, funcname, fnlen);
 }

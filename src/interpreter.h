@@ -9,6 +9,7 @@
 #include "bool_op.h"
 #include "types_op.h"
 #include "stack_op.h"
+#include <omp.h>
 
 #define OP_MAP_SIZE 64
 #define BROP_MAP_SIZE 32
@@ -39,20 +40,13 @@ extern struct Builtins builtins;
 int init_builtins();
 void free_builtins();
 
-void op_none(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_stack(struct ProgramState *state, struct ExceptionHandler *jbuff);
-
-void op_print(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_printall(struct ProgramState *state, struct ExceptionHandler *jbuff);
 
 void brop_save(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
 void brop_load(struct ProgramState *state, char *filename, size_t fnlen, struct ExceptionHandler *jbuff);
 
 void op_apply(struct ProgramState* state, struct ExceptionHandler* jbuff);
-void op_quote(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_dip(struct ProgramState* state, struct ExceptionHandler* jbuff);
-void op_compose(struct ProgramState* state, struct ExceptionHandler* jbuff);
-void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_compress(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
@@ -61,11 +55,14 @@ void op_pop(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_inject(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_try(struct ProgramState* state, struct ExceptionHandler* jbuff);
-void op_exit(struct ProgramState *state, struct ExceptionHandler *jbuff);
 
 void op_if(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_loop(struct ProgramState *state, struct ExceptionHandler *jbuff);
-void op_nop(struct ProgramState* state, struct ExceptionHandler* jbuff);
+
+void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff);
+
+void numop_inject(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff);
+void numop_pinject(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff);
 
 void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct ExceptionHandler* jbuff);
 void brop_swap(struct ProgramState *state, char *comand, size_t clen, struct ExceptionHandler *jbuff);
