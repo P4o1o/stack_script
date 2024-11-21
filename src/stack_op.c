@@ -156,24 +156,22 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
     size_t resindex = state->stack->next - 1;
     size_t finallen;
     char *resstr;
-    char buffer[1];
     int result;
     switch (state->stack->content[resindex].type)
     {
     case String:
-        finallen = strlen(state->stack->content[resindex].val.instr) + 5;
+        finallen = strlen(state->stack->content[resindex].val.instr) + 3;
         resstr = malloc(finallen);
         if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            strcpy(resstr + 2, state->stack->content[resindex].val.instr);
-            resstr[0] = '[';
-            resstr[1] = '"';
-            resstr[finallen - 3] = '"';
-            resstr[finallen - 2] = ']';
+            resstr[0] = '"';
+            strcpy(resstr + 1, state->stack->content[resindex].val.instr);
+            resstr[finallen - 2] = '"';
             resstr[finallen - 1] = '\0';
             free(state->stack->content[resindex].val.instr);
             state->stack->content[resindex].val.instr = resstr;
+            state->stack->content[resindex].type = Instruction;
         }
         break;
     case Instruction:
@@ -196,61 +194,52 @@ void op_quote(struct ProgramState *state, struct ExceptionHandler *jbuff) {
         if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            snprintf(resstr, finallen + 3, "[%ld]", state->stack->content[resindex].val.ival);
+            snprintf(resstr, finallen + 3, "%ld", state->stack->content[resindex].val.ival);
             state->stack->content[resindex].val.instr = resstr;
             state->stack->content[resindex].type = Instruction;
         }
         break;
     case Floating:
-        result = snprintf(buffer, 1, "%lf", state->stack->content[resindex].val.fval);
-        if (result < 1) {
+        result = (int) log10(state->stack->content[resindex].val.fval + 1) + 1 + (state->stack->content[resindex].val.ival < 0);
+        result += 20 / (1 + result);
+        char *resstr = malloc(result + 3);
+        if (resstr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            char *resstr = malloc(result + 3);
-            if (resstr == NULL) {
-                RAISE(jbuff, ProgramPanic);
-            } else {
-                snprintf(resstr, result + 3, "[%lf]", state->stack->content[resindex].val.fval);
-                state->stack->content[resindex].val.instr = resstr;
-                state->stack->content[resindex].type = Instruction;
-            }
+            snprintf(resstr, result + 3, "%lf", state->stack->content[resindex].val.fval);
+            state->stack->content[resindex].val.instr = resstr;
+            state->stack->content[resindex].type = Instruction;
         }
         break;
     case Boolean:
         result = state->stack->content[resindex].val.ival;
-        state->stack->content[resindex].val.instr = malloc(8 - result);
+        state->stack->content[resindex].val.instr = malloc(6 - result);
         if (state->stack->content[resindex].val.instr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, BOOL[result], 5 - result);
-            state->stack->content[resindex].val.instr[6 - result] = ']';
-            state->stack->content[resindex].val.instr[7 - result] = '\0';
+            strncpy(state->stack->content[resindex].val.instr, BOOL[result], 5 - result);
+            state->stack->content[resindex].val.instr[6 - result] = '\0';
             state->stack->content[resindex].type = Instruction;
         }
         break;
     case None:
-        state->stack->content[resindex].val.instr = malloc(7);
+        state->stack->content[resindex].val.instr = malloc(5);
         if (state->stack->content[resindex].val.instr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, NONE, 4);
-            state->stack->content[resindex].val.instr[6] = ']';
-            state->stack->content[resindex].val.instr[7] = '\0';
+            strncpy(state->stack->content[resindex].val.instr, NONE, 4);
+            state->stack->content[resindex].val.instr[4] = '\0';
             state->stack->content[resindex].type = Instruction;
         }
         break;
     case Type:
         result = state->stack->content[resindex].val.ival;
-        state->stack->content[resindex].val.instr = malloc(TYPES_LEN[result] + 3);
+        state->stack->content[resindex].val.instr = malloc(TYPES_LEN[result] + 1);
         if (state->stack->content[resindex].val.instr == NULL) {
             RAISE(jbuff, ProgramPanic);
         } else {
-            state->stack->content[resindex].val.instr[0] = '[';
-            strncpy(state->stack->content[resindex].val.instr + 1, TYPES[result], TYPES_LEN[result]);
-            state->stack->content[resindex].val.instr[TYPES_LEN[result] + 1] = ']';
-            state->stack->content[resindex].val.instr[TYPES_LEN[result] + 2] = '\0';
+            strncpy(state->stack->content[resindex].val.instr, TYPES[result], TYPES_LEN[result]);
+            state->stack->content[resindex].val.instr[TYPES_LEN[result]] = '\0';
             state->stack->content[resindex].type = Instruction;
         }
     break;

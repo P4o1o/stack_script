@@ -11,9 +11,8 @@
 #include "stack_op.h"
 #include <omp.h>
 
-extern const char *BOOL[];
-extern const char *INSTRUCTIONS[];
-extern const char *BRACKETS_INSTR[];
+extern char *INSTRUCTIONS[];
+extern char *BRACKETS_INSTR[];
 
 
 struct OperationElem {

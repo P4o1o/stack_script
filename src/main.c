@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         printf(">");
         fflush(stdout);
         TRY(try_buf) {
-            if (fgets(bufferin, BUFFERSIZE, stdin) >= 0) {
+            if (fgets(bufferin, BUFFERSIZE, stdin) != NULL) {
                 execute(&state, bufferin, try_buf);
             }
         }CATCH(try_buf, ProgramExit) {

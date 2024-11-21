@@ -9,6 +9,7 @@
 #include "environment.h"
 #include "primitives.h"
 #include <setjmp.h>
+#include <string.h>
 
 struct OpenMemMap{
     char *openmem;

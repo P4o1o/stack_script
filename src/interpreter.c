@@ -2,15 +2,13 @@
 // Created by P4o1o on 14/05/2024.
 //
 #include "interpreter.h"
-#include <string.h>
 #include <math.h>
-#include <stdlib.h>
 #include <errno.h>
 
 #define INNER_STACK_CAPACITY 256
 
 #define NUMBERED_SIZE 5
-const char *NUMBERED_INSTR[] = {
+char *NUMBERED_INSTR[] = {
         "dup", "swap", "dig", "inject", "pinject"
 };
 const num_operations NUM_INSTR_OP[] = {
@@ -19,7 +17,7 @@ const num_operations NUM_INSTR_OP[] = {
 #define NUMOP_MAP_SIZE 16
 
 #define BRACKETS_SIZE 12
-const char *BRACKETS_INSTR[] = {
+char *BRACKETS_INSTR[] = {
         "load","if","save","compose",
         "delete","isdef","loop","split",
         "swap","define","dup", "times", "dig"
@@ -32,7 +30,7 @@ const br_operations BR_INSTR_OP[] ={
 #define BROP_MAP_SIZE 32
 
 #define INSTR_SIZE 55
-const char* INSTRUCTIONS[] = {
+char* INSTRUCTIONS[] = {
         "int", "clear", "quote", "<=", "dup",
         "or", "swap", "+", "and", "dip",
         "exit", "nop", "print", "size", "try",
@@ -323,6 +321,7 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         strncpy(elem.val.instr, instr + 1, qexpsize - 1);
         elem.val.instr[qexpsize - 1] = '\0';
         push_Stack(state->stack, elem, jbuff);
+        return;
     }else if(instr[0] == '"' && instr[instrlen - 1] == '"'){ // String
         struct StackElem elem;
         elem.type = String;
@@ -333,6 +332,7 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         strncpy(elem.val.instr, instr + 1, qexpsize - 1);
         elem.val.instr[qexpsize - 1] = '\0';
         push_Stack(state->stack, elem, jbuff);
+        return;
     }else if(instr[0] == '{' && instr[instrlen - 1] == '}'){ // InnerStack
         struct StackElem elem = new_Stack(jbuff);
         struct ProgramState sstat;
@@ -342,7 +342,9 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
         parse_script(&sstat, instr + 1, instrlen - 2, jbuff);
         remove_backtrace(jbuff);
         push_Stack(state->stack, elem, jbuff);
+        return;
     }else if(instr[instrlen - 1] == ')'){ // BR OP
+        size_t index;
         size_t br_index;
             for(size_t i = 0; i < instrlen; i++)
                 if (instr[i] == '(') {
@@ -351,7 +353,7 @@ void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, str
                 }
             RAISE(jbuff, InvalidInstruction);
 found_open_br:
-            size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
             struct BrOperationElem* elem = builtins.brop_map[index];
             while (elem != NULL) {
                 if (strncmp(instr, elem->key, br_index) == 0 && br_index == strlen(elem->key)) {
@@ -361,6 +363,7 @@ found_open_br:
                 elem = elem->next;
             }
     }else if(instr[instrlen - 1] >= '0' && instr[instrlen - 1] <= '9'){ // NUMOP
+        size_t index;
         size_t num_index;
         for(size_t i = instrlen - 1; i > 0; i--)
             if (instr[i] < '0' || instr[i] > '9') {
@@ -370,7 +373,7 @@ found_open_br:
         RAISE(jbuff, InvalidInstruction);
 found_num_op:
             num_index += 1;
-            size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, num_index) & (NUMOP_MAP_SIZE - 1));
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, num_index) & (NUMOP_MAP_SIZE - 1));
             struct NumOperationElem* elem = builtins.numop_map[index];
             while (elem != NULL) {
                 if (strncmp(instr, elem->key, num_index) == 0 && num_index == strlen(elem->key)) {
@@ -499,7 +502,7 @@ void brop_split(struct ProgramState *state, char *comand, size_t clen, struct Ex
     state->stack->next -= 1;
     struct StackElem string = state->stack->content[state->stack->next];
     if(delimiter.type == String && string.type == String) {
-        char *token = strtok(string.val.instr, " ");
+        char *token = strtok(string.val.instr, delimiter.val.instr);
         do{
             struct StackElem elem;
             elem.type = String;
@@ -507,7 +510,7 @@ void brop_split(struct ProgramState *state, char *comand, size_t clen, struct Ex
             elem.val.instr = malloc(tokenlen + 1);
              if (elem.val.instr == NULL)
                 RAISE(jbuff, ProgramPanic);
-            strncpy(elem.val.instr, token, tokenlen);
+            memcpy(elem.val.instr, token, tokenlen);
             elem.val.instr[tokenlen] = '\0';
             push_Stack(state->stack, elem, jbuff);
         }while((token = strtok(NULL, delimiter.val.instr)) != NULL);
@@ -612,7 +615,7 @@ void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff){
             elem.val.instr = malloc(tokenlen + 1);
              if (elem.val.instr == NULL)
                 RAISE(jbuff, ProgramPanic);
-            strncpy(elem.val.instr, token, tokenlen);
+            memcpy(elem.val.instr, token, tokenlen);
             elem.val.instr[tokenlen] = '\0';
             push_Stack(state->stack, elem, jbuff);
         }while((token = strtok(NULL, " ")) != NULL);
