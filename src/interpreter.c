@@ -9,9 +9,14 @@
 
 #define INNER_STACK_CAPACITY 256
 
+#define NUMBERED_SIZE 5
 const char *NUMBERED_INSTR[] = {
         "dup", "swap", "dig", "inject", "pinject"
 };
+const num_operations NUM_INSTR_OP[] = {
+        numop_dup, numop_swap, numop_dig, numop_inject, numop_pinject
+};
+#define NUMOP_MAP_SIZE 16
 
 #define BRACKETS_SIZE 12
 const char *BRACKETS_INSTR[] = {
@@ -19,8 +24,12 @@ const char *BRACKETS_INSTR[] = {
         "delete","isdef","loop","split",
         "swap","define","dup", "times", "dig"
 };
-
-const char BR_CLOSE = ')';
+const br_operations BR_INSTR_OP[] ={
+        brop_load, brop_if, brop_save, brop_compose,
+        brop_delete, brop_isdef, brop_loop, brop_split,
+        brop_swap, brop_define, brop_dup, brop_times, brop_dig
+};
+#define BROP_MAP_SIZE 32
 
 #define INSTR_SIZE 55
 const char* INSTRUCTIONS[] = {
@@ -36,7 +45,6 @@ const char* INSTRUCTIONS[] = {
         "none", "type", "INSTR", "INT", "FLOAT",
         "BOOL", "STR", "TYPE", "NONE", "STACK",
 };
-
 const operations INSTR_OP[] ={
         op_int, op_clear, op_quote, op_lowereq, op_dup,
         op_or, op_swap, op_sum, op_and, op_dip,
@@ -50,16 +58,7 @@ const operations INSTR_OP[] ={
         op_none, op_type, op_INSTR, op_INT, op_FLOAT,
         op_BOOL, op_STR, op_TYPE, op_NONE, op_STACK
 };
-
-const br_operations BR_INSTR_OP[] ={
-        brop_load, brop_if, brop_save, brop_compose,
-        brop_delete, brop_isdef, brop_loop, brop_split,
-        brop_swap, brop_define, brop_dup, brop_times, brop_dig
-};
-
-const num_operations NUM_INSTR_OP[] = {
-        numop_dup, numop_swap, numop_dig, numop_inject, numop_pinject
-};
+#define OP_MAP_SIZE 64
 
 #define IS_INDENT(comand) ((int) ((comand) == ' ' || (comand) == '\n' || (comand) == '\t' || (comand) == '\r' || (comand) == '\0'))
 
@@ -76,12 +75,6 @@ int init_builtins() {
         return 0;
     for (size_t i = 0; i < OP_MAP_SIZE; i++) {
         builtins.op_map[i] = NULL;
-    }
-    builtins.brop_map = malloc(BROP_MAP_SIZE * sizeof(struct BrOperationElem*));
-    if (builtins.brop_map == NULL)
-        return 0;
-    for (size_t i = 0; i < BROP_MAP_SIZE; i++) {
-        builtins.brop_map[i] = NULL;
     }
     for (size_t i = 0; i < INSTR_SIZE; i++) {
         uint64_t index = SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, INSTRUCTIONS[i], strlen(INSTRUCTIONS[i])) & (OP_MAP_SIZE - 1);
@@ -100,6 +93,13 @@ int init_builtins() {
         elem->next = builtins.op_map[index];
         builtins.op_map[index] = elem;
     }
+
+    builtins.brop_map = malloc(BROP_MAP_SIZE * sizeof(struct BrOperationElem*));
+    if (builtins.brop_map == NULL)
+        return 0;
+    for (size_t i = 0; i < BROP_MAP_SIZE; i++) {
+        builtins.brop_map[i] = NULL;
+    }
     for (size_t i = 0; i < BRACKETS_SIZE; i++) {
         uint64_t index = SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, BRACKETS_INSTR[i], strlen(BRACKETS_INSTR[i])) & (BROP_MAP_SIZE - 1);
         struct BrOperationElem* elem = builtins.brop_map[index];
@@ -117,6 +117,30 @@ int init_builtins() {
         elem->next = builtins.brop_map[index];
         builtins.brop_map[index] = elem;
     }
+
+    builtins.numop_map = malloc(NUMOP_MAP_SIZE * sizeof(struct NumOperationElem*));
+    if (builtins.numop_map == NULL)
+        return 0;
+    for (size_t i = 0; i < NUMOP_MAP_SIZE; i++) {
+        builtins.numop_map[i] = NULL;
+    }
+    for (size_t i = 0; i < NUMBERED_SIZE; i++) {
+        uint64_t index = SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, NUMBERED_INSTR[i], strlen(NUMBERED_INSTR[i])) & (NUMOP_MAP_SIZE - 1);
+        struct NumOperationElem* elem = builtins.numop_map[index];
+        while (elem != NULL) {
+            if (strcmp(NUMBERED_INSTR[i], elem->key) == 0) {
+                return 0;
+            }
+            elem = elem->next;
+        }
+        elem = malloc(sizeof(struct NumOperationElem));
+        if (elem == NULL)
+            return 0;
+        elem->key = NUMBERED_INSTR[i];
+        elem->numop = NUM_INSTR_OP[i];
+        elem->next = builtins.numop_map[index];
+        builtins.numop_map[index] = elem;
+    }
     return 1;
 }
 
@@ -130,6 +154,7 @@ void free_builtins() {
         }
     }
     free(builtins.op_map);
+
     for (size_t i = 0; i < BROP_MAP_SIZE; i++) {
         struct BrOperationElem* elem = builtins.brop_map[i];
         while (elem != NULL) {
@@ -139,6 +164,16 @@ void free_builtins() {
         }
     }
     free(builtins.brop_map);
+
+    for (size_t i = 0; i < NUMOP_MAP_SIZE; i++) {
+        struct NumOperationElem* elem = builtins.numop_map[i];
+        while (elem != NULL) {
+            struct NumOperationElem* temp = elem->next;
+            free(elem);
+            elem = temp;
+        }
+    }
+    free(builtins.numop_map);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -185,8 +220,25 @@ static inline int get_Environment(struct Environment* env, const char* key, size
     return 0;
 }
 
+static inline int remove_Environment(struct Environment* env, const char* key, size_t keylen) {
+    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
+    struct EnvElem** elem_ptr = &env->content[index];
+    struct EnvElem* elem = *elem_ptr;
+    while (elem != NULL) {
+        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
+            free(elem->key);
+            free(elem->value);
+            *elem_ptr = elem->next;
+            free(elem);
+            return 1;
+        }
+        elem_ptr = &elem->next;
+        elem = *elem_ptr;
+    }
+    return 0;
+}
 
-inline void add_backtrace(struct ExceptionHandler *jbuff){
+static inline void add_backtrace(struct ExceptionHandler *jbuff){
     jbuff->bt_size += 1;
     if(jbuff->bt_size >= jbuff->bt_capacity){
         jbuff->bt_capacity *= 2;
@@ -194,11 +246,11 @@ inline void add_backtrace(struct ExceptionHandler *jbuff){
     }
 }
 
-inline void remove_backtrace(struct ExceptionHandler *jbuff){
+static inline void remove_backtrace(struct ExceptionHandler *jbuff){
     jbuff->bt_size -= 1;
 }
 
-inline void add_memory(struct ExceptionHandler *jbuff, char *mem){
+static inline void add_memory(struct ExceptionHandler *jbuff, char *mem){
     size_t index = ((size_t) mem) % OM_VEC_CAPACITY;
     struct OpenMemMap *elem = malloc(sizeof(struct OpenMemMap));
     if (elem == NULL)
@@ -208,7 +260,7 @@ inline void add_memory(struct ExceptionHandler *jbuff, char *mem){
     jbuff->openmemmap[index] = elem;
 }
 
-inline int remove_memory(struct ExceptionHandler *jbuff, char *mem){
+static inline int remove_memory(struct ExceptionHandler *jbuff, char *mem){
     size_t index = ((size_t) mem) % OM_VEC_CAPACITY;
     struct OpenMemMap** elem_ptr = &jbuff->openmemmap[index];
     struct OpenMemMap* elem = *elem_ptr;
@@ -225,7 +277,7 @@ inline int remove_memory(struct ExceptionHandler *jbuff, char *mem){
     return 0;
 }
 
-inline struct StackElem new_Stack(struct ExceptionHandler *jbuff){
+static inline struct StackElem new_Stack(struct ExceptionHandler *jbuff){
     struct StackElem elem;
     elem.type = InnerStack;
     elem.val.stack = malloc(sizeof(struct Stack));
@@ -241,9 +293,27 @@ inline struct StackElem new_Stack(struct ExceptionHandler *jbuff){
 
 //------------------------------------------------------------------------------------------------------
 
-inline void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
+void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
     jbuff->not_exec[jbuff->bt_size - 1] = instr;
-    if(instr[0] == '[' && instr[instrlen - 1] == ']'){
+    char *endptr;
+    int64_t intval = strtol(instr, &endptr, 10);
+    if(endptr == (instr + instrlen) && errno != ERANGE){ // Int
+        struct StackElem elem;
+        elem.type = Integer;
+        elem.val.ival = intval;
+        push_Stack(state->stack, elem, jbuff);
+        return;
+    }
+    endptr = NULL;
+    double floatval = strtod(instr, &endptr);
+    if(endptr == (instr + instrlen) && errno != ERANGE){ // Float
+        struct StackElem elem;
+        elem.type = Floating;
+        elem.val.fval = floatval;
+        push_Stack(state->stack, elem, jbuff);
+        return;
+    }
+    if(instr[0] == '[' && instr[instrlen - 1] == ']'){ // Instruction
         struct StackElem elem;
         elem.type = Instruction;
         size_t qexpsize = instrlen - 1;
@@ -253,7 +323,7 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
         strncpy(elem.val.instr, instr + 1, qexpsize - 1);
         elem.val.instr[qexpsize - 1] = '\0';
         push_Stack(state->stack, elem, jbuff);
-    }else if(instr[0] == '"' && instr[instrlen - 1] == '"'){
+    }else if(instr[0] == '"' && instr[instrlen - 1] == '"'){ // String
         struct StackElem elem;
         elem.type = String;
         size_t qexpsize = instrlen - 1;
@@ -263,7 +333,7 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
         strncpy(elem.val.instr, instr + 1, qexpsize - 1);
         elem.val.instr[qexpsize - 1] = '\0';
         push_Stack(state->stack, elem, jbuff);
-    }else if(instr[0] == '{' && instr[instrlen - 1] == '}'){
+    }else if(instr[0] == '{' && instr[instrlen - 1] == '}'){ // InnerStack
         struct StackElem elem = new_Stack(jbuff);
         struct ProgramState sstat;
         sstat.stack = elem.val.stack;
@@ -272,36 +342,16 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
         parse_script(&sstat, instr + 1, instrlen - 2, jbuff);
         remove_backtrace(jbuff);
         push_Stack(state->stack, elem, jbuff);
-    }else{
-        char *endptr;
-        int64_t intval = strtol(instr, &endptr, 10);
-        if(endptr == (instr + instrlen) && errno != ERANGE){
-            struct StackElem elem;
-            elem.type = Integer;
-            elem.val.ival = intval;
-            push_Stack(state->stack, elem, jbuff);
-            return;
-        }
-        endptr = NULL;
-        double floatval = strtod(instr, &endptr);
-        if(endptr == (instr + instrlen) && errno != ERANGE){
-            struct StackElem elem;
-            elem.type = Floating;
-            elem.val.fval = floatval;
-            push_Stack(state->stack, elem, jbuff);
-            return;
-        }
-        if(instr[instrlen - 1] == BR_CLOSE){
-            size_t br_index;
+    }else if(instr[instrlen - 1] == ')'){ // BR OP
+        size_t br_index;
             for(size_t i = 0; i < instrlen; i++)
                 if (instr[i] == '(') {
                     br_index = i;
                     goto found_open_br;
                 }
             RAISE(jbuff, InvalidInstruction);
-            size_t index;
-    found_open_br:
-            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
+found_open_br:
+            size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
             struct BrOperationElem* elem = builtins.brop_map[index];
             while (elem != NULL) {
                 if (strncmp(instr, elem->key, br_index) == 0 && br_index == strlen(elem->key)) {
@@ -310,42 +360,55 @@ inline void execute_instr(struct ProgramState *state, char *instr, size_t instrl
                 }
                 elem = elem->next;
             }
-        }else {
-            size_t index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, instr, instrlen) & (OP_MAP_SIZE - 1));
-            struct OperationElem* elem = builtins.op_map[index];
+    }else if(instr[instrlen - 1] >= '0' && instr[instrlen - 1] <= '9'){ // NUMOP
+        size_t num_index;
+        for(size_t i = instrlen - 1; i > 0; i--)
+            if (instr[i] < '0' || instr[i] > '9') {
+                num_index = i;
+                goto found_num_op;
+            }
+        RAISE(jbuff, InvalidInstruction);
+found_num_op:
+            num_index += 1;
+            size_t index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, num_index) & (NUMOP_MAP_SIZE - 1));
+            struct NumOperationElem* elem = builtins.numop_map[index];
             while (elem != NULL) {
-                if (strncmp(instr, elem->key, instrlen) == 0 && instrlen == strlen(elem->key)) {
-                    elem->op(state, jbuff);
-                    return;
+                if (strncmp(instr, elem->key, num_index) == 0 && num_index == strlen(elem->key)) {
+                    size_t number = strtol(instr + num_index, &endptr, 10);
+                    if (endptr == (instr + instrlen) && errno != ERANGE) {
+                        elem->numop(state, number, jbuff);
+                        return;
+                    }else{
+                        RAISE(jbuff, InvalidInstruction);
+                    }
                 }
                 elem = elem->next;
             }
-            for (short i = 0; i < 5; i++) {
-                size_t nilen = strlen(NUMBERED_INSTR[i]);
-                if (strncmp(NUMBERED_INSTR[i], instr, nilen) == 0) {
-                    size_t number = strtol(instr + nilen, &endptr, 10);
-                    if (endptr == (instr + instrlen) && errno != ERANGE) {
-                        NUM_INSTR_OP[i](state, number, jbuff);
-                        return;
-                    }
-                }
-            }
-            char** funct = malloc(sizeof(char*));
-            if (funct == NULL)
-                RAISE(jbuff, ProgramPanic);
-            if (get_Environment(&state->env, instr, instrlen, funct) == 1) {
-                char* text = *funct;
-                free(funct);
-                add_backtrace(jbuff);
-                parse_script(state, text, strlen(text), jbuff);
-                remove_backtrace(jbuff);
+    }else{
+        size_t index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, instr, instrlen) & (OP_MAP_SIZE - 1));
+        struct OperationElem* elem = builtins.op_map[index];
+        while (elem != NULL) {
+            if (strncmp(instr, elem->key, instrlen) == 0 && instrlen == strlen(elem->key)) { // OP
+                elem->op(state, jbuff);
                 return;
-            }else{
-                free(funct);
             }
+            elem = elem->next;
         }
-        RAISE(jbuff, InvalidInstruction);
+        char** funct = malloc(sizeof(char*));
+        if (funct == NULL)
+            RAISE(jbuff, ProgramPanic);
+        if (get_Environment(state->env, instr, instrlen, funct) == 1) {
+            char* text = *funct;
+            free(funct);
+            add_backtrace(jbuff);
+            parse_script(state, text, strlen(text), jbuff);
+            remove_backtrace(jbuff);
+            return;
+        }else{
+            free(funct);
+        }
     }
+    RAISE(jbuff, InvalidInstruction);
 }
 
 void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff){
@@ -1120,30 +1183,11 @@ void brop_dig(struct ProgramState* state, char* number, size_t numberlen, struct
     remove_backtrace(jbuff);
 }
 
-
-static inline int remove_Environment(struct Environment* env, const char* key, size_t keylen) {
-    size_t index = (size_t)(SipHash_2_4(HASHKEY0, HASHKEY1, key, keylen) % env->capacity);
-    struct EnvElem** elem_ptr = &env->content[index];
-    struct EnvElem* elem = *elem_ptr;
-    while (elem != NULL) {
-        if (keylen == strlen(elem->key) && strncmp(key, elem->key, keylen) == 0) {
-            free(elem->key);
-            free(elem->value);
-            *elem_ptr = elem->next;
-            free(elem);
-            return 1;
-        }
-        elem_ptr = &elem->next;
-        elem = *elem_ptr;
-    }
-    return 0;
-}
-
 void brop_isdef(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
     struct StackElem elem;
     elem.type = Boolean;
     char **out = malloc(sizeof(char *));
-    elem.val.ival = get_Environment(&state->env, funcname, fnlen, out);
+    elem.val.ival = get_Environment(state->env, funcname, fnlen, out);
     free(out);
     push_Stack(state->stack, elem, jbuff);
 }
@@ -1156,9 +1200,9 @@ void brop_define(struct ProgramState *state, char *funcname, size_t fnlen, struc
         state->stack->next += 1;
         RAISE(jbuff, InvalidOperands);
     }
-    set_Environment(&state->env, funcname, fnlen, state->stack->content[state->stack->next].val.instr, jbuff);
+    set_Environment(state->env, funcname, fnlen, state->stack->content[state->stack->next].val.instr, jbuff);
 }
 
 void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struct ExceptionHandler *jbuff){
-    remove_Environment(&state->env, funcname, fnlen);
+    remove_Environment(state->env, funcname, fnlen);
 }

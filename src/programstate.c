@@ -30,19 +30,23 @@ inline void free_Stack(struct Stack *stack){
     free(stack);
 }
 
-static inline struct Environment init_Environment(size_t capacity){
-    struct Environment res;
-    res.content = malloc(sizeof(struct EnvElem *) * capacity);
-    res.capacity = (res.content != NULL) * capacity;
-    for (size_t i = 0; i < res.capacity; i++) {
-        res.content[i] = NULL;
+static inline struct Environment *init_Environment(size_t capacity){
+    struct Environment *res = malloc(sizeof(struct Stack));
+    if(res == NULL)
+        return NULL;
+    res->content = malloc(sizeof(struct EnvElem *) * capacity);
+    if(res->content == NULL)
+        return NULL;
+    res->capacity = capacity;
+    for (size_t i = 0; i < res->capacity; i++) {
+        res->content[i] = NULL;
     }
     return res;
 }
 
-static inline void free_Environment(struct Environment env){
-    for (size_t i = 0; i < env.capacity; i++) {
-        struct EnvElem *elem = env.content[i];
+static inline void free_Environment(struct Environment *env){
+    for (size_t i = 0; i < env->capacity; i++) {
+        struct EnvElem *elem = env->content[i];
         while(elem != NULL){
             struct EnvElem *temp = elem->next;
             free(elem->key);
@@ -51,8 +55,9 @@ static inline void free_Environment(struct Environment env){
             elem = temp;
         }
     }
-    free(env.content);
-    env.capacity = 0;
+    free(env->content);
+    env->capacity = 0;
+    free(env);
 }
 
 struct ProgramState init_PrgState(size_t stack_capacity, size_t env_capacity){

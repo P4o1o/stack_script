@@ -52,7 +52,7 @@ void print_Exception(struct ExceptionHandler* exc);
 
 struct ProgramState{
     struct Stack *stack;
-    struct Environment env;
+    struct Environment *env;
 };
 
 typedef void (*operations)(struct ProgramState*, struct ExceptionHandler*);
@@ -104,12 +104,13 @@ static inline void copy_Stack(struct Stack *dest, struct Stack *src, struct Exce
             case Type:
             case Boolean:
             case Integer:
-                dest->content[i].val.ival == src->content[i].val.ival;
+                dest->content[i].val.ival = src->content[i].val.ival;
                 break;
             case Floating:
-                dest->content[i].val.fval == src->content[i].val.fval;
+                dest->content[i].val.fval = src->content[i].val.fval;
+                break;
             case None:
-                dest->content[i].val.ival == 0;
+                dest->content[i].val.ival = 0;
                 break;
             case InnerStack:
                 copy_Stack(dest->content[i].val.stack, src->content[i].val.stack, jbuff);

@@ -11,9 +11,6 @@
 #include "stack_op.h"
 #include <omp.h>
 
-#define OP_MAP_SIZE 64
-#define BROP_MAP_SIZE 32
-
 extern const char *BOOL[];
 extern const char *INSTRUCTIONS[];
 extern const char *BRACKETS_INSTR[];
@@ -31,9 +28,15 @@ struct BrOperationElem {
 	struct BrOperationElem* next;
 };
 
+struct NumOperationElem {
+	char* key;
+	num_operations numop;
+	struct NumOperationElem* next;
+};
 struct Builtins {
 	struct OperationElem** op_map;
 	struct BrOperationElem** brop_map;
+	struct NumOperationElem** numop_map;
 };
 
 extern struct Builtins builtins;
