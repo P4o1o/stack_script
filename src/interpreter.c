@@ -89,6 +89,7 @@ int init_builtins() {
         elem->key = INSTRUCTIONS[i];
         elem->op = INSTR_OP[i];
         elem->next = builtins.op_map[index];
+        elem->key_len = strlen(elem->key);
         builtins.op_map[index] = elem;
     }
 
@@ -113,6 +114,7 @@ int init_builtins() {
         elem->key = BRACKETS_INSTR[i];
         elem->brop = BR_INSTR_OP[i];
         elem->next = builtins.brop_map[index];
+        elem->key_len = strlen(elem->key);
         builtins.brop_map[index] = elem;
     }
 
@@ -137,6 +139,7 @@ int init_builtins() {
         elem->key = NUMBERED_INSTR[i];
         elem->numop = NUM_INSTR_OP[i];
         elem->next = builtins.numop_map[index];
+        elem->key_len = strlen(elem->key);
         builtins.numop_map[index] = elem;
     }
     return 1;
@@ -291,127 +294,134 @@ static inline struct StackElem new_Stack(struct ExceptionHandler *jbuff){
 
 //------------------------------------------------------------------------------------------------------
 
-void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff){
-    jbuff->not_exec[jbuff->bt_size - 1] = instr;
+static inline size_t index_of_numop(struct Token *token, struct ExceptionHandler *jbuff){
+    for(size_t i = token->instrlen - 1; i > 0; i--)
+        if (token->instr[i] < '0' || token->instr[i] > '9') {
+            return i + 1;
+        }
+    RAISE(jbuff, InvalidInstruction);
+}
+
+void execute_instr(struct ProgramState *state, struct Token *token, struct ExceptionHandler *jbuff){
+    jbuff->not_exec[jbuff->bt_size - 1] = token->instr;
     char *endptr;
-    int64_t intval = strtol(instr, &endptr, 10);
-    if(endptr == (instr + instrlen) && errno != ERANGE){ // Int
-        struct StackElem elem;
-        elem.type = Integer;
-        elem.val.ival = intval;
-        push_Stack(state->stack, elem, jbuff);
-        return;
-    }
-    endptr = NULL;
-    double floatval = strtod(instr, &endptr);
-    if(endptr == (instr + instrlen) && errno != ERANGE){ // Float
-        struct StackElem elem;
-        elem.type = Floating;
-        elem.val.fval = floatval;
-        push_Stack(state->stack, elem, jbuff);
-        return;
-    }
-    if(instr[0] == '[' && instr[instrlen - 1] == ']'){ // Instruction
-        struct StackElem elem;
-        elem.type = Instruction;
-        size_t qexpsize = instrlen - 1;
-        elem.val.instr = malloc(qexpsize);
-        if(elem.val.instr == NULL)
-            RAISE(jbuff, ProgramPanic);
-        strncpy(elem.val.instr, instr + 1, qexpsize - 1);
-        elem.val.instr[qexpsize - 1] = '\0';
-        push_Stack(state->stack, elem, jbuff);
-        return;
-    }else if(instr[0] == '"' && instr[instrlen - 1] == '"'){ // String
-        struct StackElem elem;
-        elem.type = String;
-        size_t qexpsize = instrlen - 1;
-        elem.val.instr = malloc(qexpsize);
-        if(elem.val.instr == NULL)
-            RAISE(jbuff, ProgramPanic);
-        strncpy(elem.val.instr, instr + 1, qexpsize - 1);
-        elem.val.instr[qexpsize - 1] = '\0';
-        push_Stack(state->stack, elem, jbuff);
-        return;
-    }else if(instr[0] == '{' && instr[instrlen - 1] == '}'){ // InnerStack
-        struct StackElem elem = new_Stack(jbuff);
-        struct ProgramState sstat;
-        sstat.stack = elem.val.stack;
-        sstat.env = state->env;
-        add_backtrace(jbuff);
-        parse_script(&sstat, instr + 1, instrlen - 2, jbuff);
-        remove_backtrace(jbuff);
-        push_Stack(state->stack, elem, jbuff);
-        return;
-    }else if(instr[instrlen - 1] == ')'){ // BR OP
-        size_t index;
-        size_t br_index;
-            for(size_t i = 0; i < instrlen; i++)
-                if (instr[i] == '(') {
-                    br_index = i;
-                    goto found_open_br;
-                }
-            RAISE(jbuff, InvalidInstruction);
-found_open_br:
-            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, br_index) & (BROP_MAP_SIZE - 1));
-            struct BrOperationElem* elem = builtins.brop_map[index];
-            while (elem != NULL) {
-                if (strncmp(instr, elem->key, br_index) == 0 && br_index == strlen(elem->key)) {
-                    elem->brop(state, instr + (br_index + 1), instrlen - br_index - 2, jbuff);
+    int64_t intval;
+    struct StackElem elem;
+    size_t index;
+    switch (token->type){
+        case StringToken:
+            elem.type = String;
+            index = token->instrlen - 1;
+            elem.val.instr = malloc(index);
+            if(elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, token->instr + 1, index - 1);
+            elem.val.instr[index - 1] = '\0';
+            push_Stack(state->stack, elem, jbuff);
+            break;
+        
+        case InstrToken:
+            elem.type = Instruction;
+            index = token->instrlen - 1;
+            elem.val.instr = malloc(index);
+            if(elem.val.instr == NULL)
+                RAISE(jbuff, ProgramPanic);
+            strncpy(elem.val.instr, token->instr + 1, index - 1);
+            elem.val.instr[index - 1] = '\0';
+            push_Stack(state->stack, elem, jbuff);
+            break;
+        
+        case BrInstrToken:
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->indx) & (BROP_MAP_SIZE - 1));
+            struct BrOperationElem* bropelem = builtins.brop_map[index];
+            while (bropelem != NULL) {
+                if (strncmp(token->instr, bropelem->key, token->indx) == 0 && token->indx == bropelem->key_len) {
+                    bropelem->brop(state, token->instr + (token->indx + 1), token->instrlen - token->indx - 2, jbuff);
                     return;
                 }
-                elem = elem->next;
+                bropelem = bropelem->next;
             }
-    }else if(instr[instrlen - 1] >= '0' && instr[instrlen - 1] <= '9'){ // NUMOP
-        size_t index;
-        size_t num_index;
-        for(size_t i = instrlen - 1; i > 0; i--)
-            if (instr[i] < '0' || instr[i] > '9') {
-                num_index = i;
-                goto found_num_op;
-            }
-        RAISE(jbuff, InvalidInstruction);
-found_num_op:
-            num_index += 1;
-            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, instr, num_index) & (NUMOP_MAP_SIZE - 1));
-            struct NumOperationElem* elem = builtins.numop_map[index];
-            while (elem != NULL) {
-                if (strncmp(instr, elem->key, num_index) == 0 && num_index == strlen(elem->key)) {
-                    size_t number = strtol(instr + num_index, &endptr, 10);
-                    if (endptr == (instr + instrlen) && errno != ERANGE) {
-                        elem->numop(state, number, jbuff);
-                        return;
-                    }else{
-                        RAISE(jbuff, InvalidInstruction);
-                    }
-                }
-                elem = elem->next;
-            }
-    }else{
-        size_t index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, instr, instrlen) & (OP_MAP_SIZE - 1));
-        struct OperationElem* elem = builtins.op_map[index];
-        while (elem != NULL) {
-            if (strncmp(instr, elem->key, instrlen) == 0 && instrlen == strlen(elem->key)) { // OP
-                elem->op(state, jbuff);
-                return;
-            }
-            elem = elem->next;
-        }
-        char** funct = malloc(sizeof(char*));
-        if (funct == NULL)
-            RAISE(jbuff, ProgramPanic);
-        if (get_Environment(state->env, instr, instrlen, funct) == 1) {
-            char* text = *funct;
-            free(funct);
+            break;
+        
+        case StackToken:
+            elem = new_Stack(jbuff);
+            struct ProgramState sstat;
+            sstat.stack = elem.val.stack;
+            sstat.env = state->env;
             add_backtrace(jbuff);
-            parse_script(state, text, strlen(text), jbuff);
+            parse_script(&sstat, token->instr + 1, token->instrlen - 2, jbuff);
             remove_backtrace(jbuff);
-            return;
-        }else{
-            free(funct);
-        }
+            push_Stack(state->stack, elem, jbuff);
+            break;
+        
+        case NumericToken:
+            intval = strtol(token->instr, &endptr, 10);
+            if(endptr == (token->instr + token->instrlen) && errno != ERANGE){ // Int
+                elem.type = Integer;
+                elem.val.ival = intval;
+                push_Stack(state->stack, elem, jbuff);
+                break;
+            }else{
+                endptr = NULL;
+                double floatval = strtod(token->instr, &endptr);
+                if(endptr == (token->instr + token->instrlen) && errno != ERANGE){ // Float
+                    elem.type = Floating;
+                    elem.val.fval = floatval;
+                    push_Stack(state->stack, elem, jbuff);
+                    break;
+                }else{
+                    RAISE(jbuff, InvalidInstruction);
+                }
+            }
+        break;
+
+        case GenericToken:
+            if(token->instr[token->instrlen - 1] >= '0' && token->instr[token->instrlen - 1] <= '9'){ // NUMOP
+                size_t num_index = index_of_numop(token, jbuff);
+                index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, num_index) & (NUMOP_MAP_SIZE - 1));
+                struct NumOperationElem* numopelem = builtins.numop_map[index];
+                while (numopelem != NULL) {
+                    if (strncmp(token->instr, numopelem->key, num_index) == 0 && num_index == numopelem->key_len) {
+                        size_t number = strtol(token->instr + num_index, &endptr, 10);
+                        if (endptr == (token->instr + token->instrlen) && errno != ERANGE) {
+                            numopelem->numop(state, number, jbuff);
+                            return;
+                        }else{
+                            RAISE(jbuff, InvalidInstruction);
+                        }
+                    }
+                    numopelem = numopelem->next;
+                }
+            }else{
+                index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, token->instr, token->instrlen) & (OP_MAP_SIZE - 1));
+                struct OperationElem* opelem = builtins.op_map[index];
+                while (opelem != NULL) {
+                    if (strncmp(token->instr, opelem->key, token->instrlen) == 0 && token->instrlen == opelem->key_len) { // OP
+                        opelem->op(state, jbuff);
+                        return;
+                    }
+                    opelem = opelem->next;
+                }
+                char** funct = malloc(sizeof(char*));
+                if (funct == NULL)
+                    RAISE(jbuff, ProgramPanic);
+                if (get_Environment(state->env, token->instr, token->instrlen, funct) == 1) {
+                    char* text = *funct;
+                    free(funct);
+                    add_backtrace(jbuff);
+                    parse_script(state, text, strlen(text), jbuff);
+                    remove_backtrace(jbuff);
+                    return;
+                }else{
+                    free(funct);
+                    RAISE(jbuff, InvalidInstruction);
+                }
+            }
+            break;
+        
+        default:
+            UNREACHABLE;
     }
-    RAISE(jbuff, InvalidInstruction);
 }
 
 void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff){
@@ -421,51 +431,97 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
     size_t round_br = 0;
     size_t curly_br = 0;
     short string = 0;
+    struct Token token;
     for(size_t i = 0; i < clen; i++){
         if(comands[i] == '"'){
-            string ^= 1;
-            if(quote == 0 && round_br == 0 && string == 0 && curly_br == 0){
-                execute_instr(state, comands + start, i + 1 - start, jbuff);
-                start = i + 1;
+            if(quote == 0 && round_br == 0 && curly_br == 0){
+                if(string == 0){
+                    token.type = StringToken;
+                }else{
+                    if(token.type == StringToken){
+                        token.instr = comands + start;
+                        token.instrlen = i + 1 - start;
+                        execute_instr(state, &token, jbuff);
+                        start = i + 1;
+                    }else{
+                        RAISE(jbuff, StringQuotingError);
+                    }
+                }
+                string ^= 1;
             }
-        }
-        if(string == 0){
+        }else if(string == 0){
             if(comands[i] == '['){
+                if(quote == 0 && round_br == 0 && curly_br == 0){
+                    token.type = InstrToken;
+                }
                 quote += 1;
             }else if(comands[i] == ']'){
                 if(quote == 0)
                     RAISE(jbuff, SquaredParenthesisError);
                 quote -= 1;
                 if(quote == 0 && round_br == 0 && curly_br == 0){
-                    execute_instr(state, comands + start, i + 1 - start, jbuff);
-                    start = i + 1;
+                    if(token.type == InstrToken){
+                        token.instr = comands + start;
+                        token.instrlen = i + 1 - start;
+                        execute_instr(state, &token, jbuff);
+                        start = i + 1;
+                    }else{
+                        RAISE(jbuff, SquaredParenthesisError);
+                    }
                 }
             }else if(comands[i] == '('){
+                if(quote == 0 && round_br == 0 && curly_br == 0){
+                    token.type = BrInstrToken;
+                    token.indx = i - start;
+                }
                 round_br += 1;
             }else if(comands[i] == ')'){
                 if(round_br == 0)
                     RAISE(jbuff, RoundParenthesisError);
                 round_br -= 1;
                 if(quote == 0 && round_br == 0 && curly_br == 0){
-                    execute_instr(state, comands + start, i + 1 - start, jbuff);
-                    start = i + 1;
+                    if(token.type == BrInstrToken){
+                        token.instr = comands + start;
+                        token.instrlen = i + 1 - start;
+                        execute_instr(state, &token, jbuff);
+                        start = i + 1;
+                    }else{
+                        RAISE(jbuff, RoundParenthesisError);
+                    }
                 }
             }else if(comands[i] == '{'){
+                if(quote == 0 && round_br == 0 && curly_br == 0){
+                    token.type = StackToken;
+                }
                 curly_br += 1;
             }else if(comands[i] == '}'){
                 if(curly_br == 0)
                     RAISE(jbuff, CurlyParenthesisError);
                 curly_br -= 1;
                 if(quote == 0 && round_br == 0 && curly_br == 0){
-                    execute_instr(state, comands + start, i + 1 - start, jbuff);
-                    start = i + 1;
+                    if(token.type == StackToken){
+                        token.instr = comands + start;
+                        token.instrlen = i + 1 - start;
+                        execute_instr(state, &token, jbuff);
+                        start = i + 1;
+                    }else{
+                        RAISE(jbuff, RoundParenthesisError);
+                    }
                 }            
-            }else if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
-                if(quote == 0 && round_br == 0 && curly_br == 0){
+            }else if(quote == 0 && round_br == 0 && curly_br == 0){
+                if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
                     if(i - start > 0) {
-                        execute_instr(state, comands + start, i - start, jbuff);
+                        token.instr = comands + start;
+                        token.instrlen = i - start;
+                        execute_instr(state, &token, jbuff);
                     }
                     start = i + 1;
+                }else if(i == start){
+                    if(comands[i] >= '0' && comands[i] <='9'){
+                        token.type = NumericToken;
+                    }else{
+                        token.type = GenericToken;
+                    }
                 }
             }
         }
@@ -480,7 +536,10 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
         RAISE(jbuff, CurlyParenthesisError);
     }else{
         if(start != clen){
-            execute_instr(state, comands + start, clen - start, jbuff);
+            token.type = GenericToken;
+            token.instr = comands + start;
+            token.instrlen = clen - start;
+            execute_instr(state, &token, jbuff);
         }
     }
 }

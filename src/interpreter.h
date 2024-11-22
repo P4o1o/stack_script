@@ -19,23 +19,43 @@ struct OperationElem {
 	char* key;
 	operations op;
 	struct OperationElem* next;
+	size_t key_len;
 };
 
 struct BrOperationElem {
 	char* key;
 	br_operations brop;
 	struct BrOperationElem* next;
+	size_t key_len;
 };
 
 struct NumOperationElem {
 	char* key;
 	num_operations numop;
 	struct NumOperationElem* next;
+	size_t key_len;
 };
+
 struct Builtins {
 	struct OperationElem** op_map;
 	struct BrOperationElem** brop_map;
 	struct NumOperationElem** numop_map;
+};
+
+enum TokenType{
+    InstrToken,
+    StringToken,
+    BrInstrToken,
+    StackToken,
+    GenericToken,
+	NumericToken,
+};
+
+struct Token{
+    char *instr;
+    enum TokenType type;
+    size_t instrlen;
+    size_t indx;
 };
 
 extern struct Builtins builtins;
@@ -83,7 +103,7 @@ void brop_delete(struct ProgramState *state, char *funcname, size_t fnlen, struc
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void execute_instr(struct ProgramState *state, char *instr, size_t instrlen, struct ExceptionHandler *jbuff);
+void execute_instr(struct ProgramState *state, struct Token *token, struct ExceptionHandler *jbuff);
 void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff);
 void execute(struct ProgramState *state, char *comands, struct ExceptionHandler *jbuff);
 void print_stack(struct ProgramState* state, size_t num_elem);
