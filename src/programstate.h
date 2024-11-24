@@ -73,7 +73,7 @@ void free_ExceptionHandler(struct ExceptionHandler *exh);
 static inline void push_Stack(struct Stack *stack, const struct StackElem val, struct ExceptionHandler *jbuff){
     if(stack->next + 1 == stack->capacity){
         stack->capacity = stack->capacity << 1;
-        struct StackElem *newmem = realloc(stack->content, stack->capacity);
+        struct StackElem *newmem = realloc(stack->content, stack->capacity * sizeof(struct StackElem));
         if(newmem == NULL){
             if(val.type == Instruction)
                 free(val.val.instr);
