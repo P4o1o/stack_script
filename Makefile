@@ -9,10 +9,10 @@ OBJFILES = $(patsubst $(SRCDIR)/%.c,$(BINDIR)/%.o,$(SRCFILES))
 all: sscript
 
 sscript : $(OBJFILES)
-	$(CC) $(CFLAGS) $(DFLAGS) -o sscript $(OBJFILES) -lm
+	$(CC) $(CFLAGS) $(DFLAGS) -o sscript $(OBJFILES) -lm -fopenmp
 
 $(BINDIR)/%.o: $(SRCDIR)/%.c | $(BINDIR)
-	$(CC) $(CFLAGS) $(DFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DFLAGS) -c $< -o $@ -lm -fopenmp
 
 $(BINDIR):
 	mkdir $(BINDIR)
