@@ -294,49 +294,37 @@ static inline struct StackElem new_Stack(struct ExceptionHandler *jbuff){
 
 //------------------------------------------------------------------------------------------------------
 
-static inline size_t index_of_numop(struct Token *token, struct ExceptionHandler *jbuff){
-    for(size_t i = token->instrlen - 1; i > 0; i--)
-        if (token->instr[i] < '0' || token->instr[i] > '9') {
-            return i + 1;
-        }
-    RAISE(jbuff, InvalidInstruction);
-}
-
 void execute_instr(struct ProgramState *state, struct Token *token, struct ExceptionHandler *jbuff){
     jbuff->not_exec[jbuff->bt_size - 1] = token->instr;
-    char *endptr;
-    int64_t intval;
     struct StackElem elem;
     size_t index;
     switch (token->type){
         case StringToken:
             elem.type = String;
-            index = token->instrlen - 1;
-            elem.val.instr = malloc(index);
+            elem.val.instr = malloc(token->info.stringlen + 1);
             if(elem.val.instr == NULL)
                 RAISE(jbuff, ProgramPanic);
-            strncpy(elem.val.instr, token->instr + 1, index - 1);
-            elem.val.instr[index - 1] = '\0';
+            strncpy(elem.val.instr, token->instr, token->info.stringlen);
+            elem.val.instr[token->info.stringlen] = '\0';
             push_Stack(state->stack, elem, jbuff);
             break;
         
         case InstrToken:
             elem.type = Instruction;
-            index = token->instrlen - 1;
-            elem.val.instr = malloc(index);
+            elem.val.instr = malloc(token->info.stringlen + 1);
             if(elem.val.instr == NULL)
                 RAISE(jbuff, ProgramPanic);
-            strncpy(elem.val.instr, token->instr + 1, index - 1);
-            elem.val.instr[index - 1] = '\0';
+            strncpy(elem.val.instr, token->instr, token->info.stringlen);
+            elem.val.instr[token->info.stringlen] = '\0';
             push_Stack(state->stack, elem, jbuff);
             break;
         
         case BrInstrToken:
-            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->indx) & (BROP_MAP_SIZE - 1));
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->info.special.val - 1) & (BROP_MAP_SIZE - 1));
             struct BrOperationElem* bropelem = builtins.brop_map[index];
             while (bropelem != NULL) {
-                if (strncmp(token->instr, bropelem->key, token->indx) == 0 && token->indx == bropelem->key_len) {
-                    bropelem->brop(state, token->instr + (token->indx + 1), token->instrlen - token->indx - 2, jbuff);
+                if (strncmp(token->instr, bropelem->key, token->info.special.val) == 0 && token->info.special.val - 1 == bropelem->key_len) {
+                    bropelem->brop(state, token->instr + token->info.special.val, token->info.special.instrlen - token->info.special.val, jbuff);
                     return;
                 }
                 bropelem = bropelem->next;
@@ -349,73 +337,56 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
             sstat.stack = elem.val.stack;
             sstat.env = state->env;
             add_backtrace(jbuff);
-            parse_script(&sstat, token->instr + 1, token->instrlen - 2, jbuff);
+            parse_script(&sstat, token->instr, token->info.stringlen, jbuff);
             remove_backtrace(jbuff);
             push_Stack(state->stack, elem, jbuff);
             break;
         
-        case NumericToken:
-            intval = strtol(token->instr, &endptr, 10);
-            if(endptr == (token->instr + token->instrlen) && errno != ERANGE){ // Int
-                elem.type = Integer;
-                elem.val.ival = intval;
-                push_Stack(state->stack, elem, jbuff);
-                break;
-            }else{
-                endptr = NULL;
-                double floatval = strtod(token->instr, &endptr);
-                if(endptr == (token->instr + token->instrlen) && errno != ERANGE){ // Float
-                    elem.type = Floating;
-                    elem.val.fval = floatval;
-                    push_Stack(state->stack, elem, jbuff);
-                    break;
-                }else{
-                    RAISE(jbuff, InvalidInstruction);
-                }
-            }
-        break;
+        case IntegerToken:
+            elem.type = Integer;
+            elem.val.ival = token->info.integer;
+            push_Stack(state->stack, elem, jbuff);
+            break;
 
-        case GenericToken:
-            if(token->instr[token->instrlen - 1] >= '0' && token->instr[token->instrlen - 1] <= '9'){ // NUMOP
-                size_t num_index = index_of_numop(token, jbuff);
-                index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, num_index) & (NUMOP_MAP_SIZE - 1));
-                struct NumOperationElem* numopelem = builtins.numop_map[index];
-                while (numopelem != NULL) {
-                    if (strncmp(token->instr, numopelem->key, num_index) == 0 && num_index == numopelem->key_len) {
-                        size_t number = strtol(token->instr + num_index, &endptr, 10);
-                        if (endptr == (token->instr + token->instrlen) && errno != ERANGE) {
-                            numopelem->numop(state, number, jbuff);
-                            return;
-                        }else{
-                            RAISE(jbuff, InvalidInstruction);
-                        }
-                    }
-                    numopelem = numopelem->next;
-                }
-            }else{
-                index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, token->instr, token->instrlen) & (OP_MAP_SIZE - 1));
-                struct OperationElem* opelem = builtins.op_map[index];
-                while (opelem != NULL) {
-                    if (strncmp(token->instr, opelem->key, token->instrlen) == 0 && token->instrlen == opelem->key_len) { // OP
-                        opelem->op(state, jbuff);
-                        return;
-                    }
-                    opelem = opelem->next;
-                }
-                char** funct = malloc(sizeof(char*));
-                if (funct == NULL)
-                    RAISE(jbuff, ProgramPanic);
-                if (get_Environment(state->env, token->instr, token->instrlen, funct) == 1) {
-                    char* text = *funct;
-                    free(funct);
-                    add_backtrace(jbuff);
-                    parse_script(state, text, strlen(text), jbuff);
-                    remove_backtrace(jbuff);
+        case DecimalToken:
+            elem.type = Floating;
+            elem.val.ival = token->info.decimal;
+            push_Stack(state->stack, elem, jbuff);
+            break;
+        case NumInsrtToken:
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->info.special.instrlen) & (NUMOP_MAP_SIZE - 1));
+            struct NumOperationElem* numopelem = builtins.numop_map[index];
+            while (numopelem != NULL) {
+                if (strncmp(token->instr, numopelem->key, token->info.special.instrlen) == 0 && token->info.special.instrlen == numopelem->key_len) {
+                    numopelem->numop(state, token->info.special.val, jbuff);
                     return;
-                }else{
-                    free(funct);
-                    RAISE(jbuff, InvalidInstruction);
                 }
+                numopelem = numopelem->next;
+            }
+            break;
+        case GenericToken:
+            index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, token->instr, token->info.stringlen) & (OP_MAP_SIZE - 1));
+            struct OperationElem* opelem = builtins.op_map[index];
+            while (opelem != NULL) {
+                if (strncmp(token->instr, opelem->key, token->info.stringlen) == 0 && token->info.stringlen == opelem->key_len) { // OP
+                    opelem->op(state, jbuff);
+                    return;
+                }
+                opelem = opelem->next;
+            }
+            char** funct = malloc(sizeof(char*));
+            if (funct == NULL)
+                RAISE(jbuff, ProgramPanic);
+            if (get_Environment(state->env, token->instr, token->info.stringlen, funct) == 1) {
+                char* text = *funct;
+                free(funct);
+                add_backtrace(jbuff);
+                parse_script(state, text, strlen(text), jbuff);
+                remove_backtrace(jbuff);
+                return;
+            }else{
+                free(funct);
+                RAISE(jbuff, InvalidInstruction);
             }
             break;
         
@@ -424,122 +395,148 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
     }
 }
 
-void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff){
-    jbuff->not_exec[jbuff->bt_size - 1] = comands;
-    size_t start = 0;
-    size_t quote = 0;
-    size_t round_br = 0;
-    size_t curly_br = 0;
-    short string = 0;
-    struct Token token;
-    for(size_t i = 0; i < clen; i++){
-        if(comands[i] == '"'){
-            if(quote == 0 && round_br == 0 && curly_br == 0){
-                if(string == 0){
-                    token.type = StringToken;
-                }else{
-                    if(token.type == StringToken){
-                        token.instr = comands + start;
-                        token.instrlen = i + 1 - start;
-                        execute_instr(state, &token, jbuff);
-                        start = i + 1;
-                    }else{
-                        RAISE(jbuff, StringQuotingError);
-                    }
-                }
-                string ^= 1;
-            }
-        }else if(string == 0){
-            if(comands[i] == '['){
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    token.type = InstrToken;
-                }
-                quote += 1;
-            }else if(comands[i] == ']'){
-                if(quote == 0)
-                    RAISE(jbuff, SquaredParenthesisError);
-                quote -= 1;
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    if(token.type == InstrToken){
-                        token.instr = comands + start;
-                        token.instrlen = i + 1 - start;
-                        execute_instr(state, &token, jbuff);
-                        start = i + 1;
-                    }else{
-                        RAISE(jbuff, SquaredParenthesisError);
-                    }
-                }
-            }else if(comands[i] == '('){
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    token.type = BrInstrToken;
-                    token.indx = i - start;
-                }
-                round_br += 1;
-            }else if(comands[i] == ')'){
-                if(round_br == 0)
-                    RAISE(jbuff, RoundParenthesisError);
-                round_br -= 1;
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    if(token.type == BrInstrToken){
-                        token.instr = comands + start;
-                        token.instrlen = i + 1 - start;
-                        execute_instr(state, &token, jbuff);
-                        start = i + 1;
-                    }else{
-                        RAISE(jbuff, RoundParenthesisError);
-                    }
-                }
-            }else if(comands[i] == '{'){
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    token.type = StackToken;
-                }
-                curly_br += 1;
-            }else if(comands[i] == '}'){
-                if(curly_br == 0)
-                    RAISE(jbuff, CurlyParenthesisError);
-                curly_br -= 1;
-                if(quote == 0 && round_br == 0 && curly_br == 0){
-                    if(token.type == StackToken){
-                        token.instr = comands + start;
-                        token.instrlen = i + 1 - start;
-                        execute_instr(state, &token, jbuff);
-                        start = i + 1;
-                    }else{
-                        RAISE(jbuff, RoundParenthesisError);
-                    }
-                }            
-            }else if(quote == 0 && round_br == 0 && curly_br == 0){
-                if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
-                    if(i - start > 0) {
-                        token.instr = comands + start;
-                        token.instrlen = i - start;
-                        execute_instr(state, &token, jbuff);
-                    }
-                    start = i + 1;
-                }else if(i == start){
-                    if(comands[i] >= '0' && comands[i] <='9'){
-                        token.type = NumericToken;
-                    }else{
-                        token.type = GenericToken;
-                    }
-                }
-            }
+struct Token stringToken(char *comand, size_t *clen, struct ExceptionHandler *jbuff){
+    struct Token res;
+    res.type = StringToken;
+    res.instr = comand + 1;
+    for(size_t i = 1; i < *clen; i++){
+        if(comand[i] == '"'){
+            res.info.stringlen = i;
+            *clen = i + 1;
+            return res;
         }
     }
-    if(quote != 0){
-        RAISE(jbuff, SquaredParenthesisError);
-    }else if(round_br != 0){
-        RAISE(jbuff, RoundParenthesisError);
-    }else if(string != 0){
-        RAISE(jbuff, StringQuotingError);
-    }else if(curly_br != 0){
-        RAISE(jbuff, CurlyParenthesisError);
+    RAISE(jbuff, StringQuotingError);
+}
+
+struct Token instrToken(char *comand, size_t *clen, struct ExceptionHandler *jbuff){
+    struct Token res;
+    res.type = InstrToken;
+    res.instr = comand + 1;
+    for(size_t i = 1; i < *clen; i++){
+        if(comand[i] == ']'){
+            res.info.stringlen = i;
+            *clen = i + 1;
+            return res;
+        }
+    }
+    RAISE(jbuff, SquaredParenthesisError);
+}
+
+struct Token stackToken(char *comand, size_t *clen, struct ExceptionHandler *jbuff){
+    struct Token res;
+    res.type = StackToken;
+    res.instr = comand + 1;
+    for(size_t i = 1; i < *clen; i++){
+        if(comand[i] == '}'){
+            res.info.stringlen = i;
+            *clen = i + 1;
+            return res;
+        }
+    }
+    RAISE(jbuff, CurlyParenthesisError);
+}
+
+struct Token numericToken(char *comand, size_t *clen, struct ExceptionHandler *jbuff){
+    struct Token res;
+    char *endptr;
+    res.instr = comand;
+    uint64_t intval = strtol(comand, &endptr, 10);
+    if(*endptr == '.' || *endptr == ','){
+        double dblval = strtod(comand, &endptr);
+        res.type = DecimalToken;
+        res.info.decimal = dblval;
     }else{
-        if(start != clen){
-            token.type = GenericToken;
-            token.instr = comands + start;
-            token.instrlen = clen - start;
+        res.type = IntegerToken;
+        res.info.integer = intval;
+    }
+    *clen = (size_t)(endptr - comand);
+    return res;
+}
+
+struct Token scriptToken(char *comand, size_t *clen, struct ExceptionHandler *jbuff){
+    struct Token res;
+    res.type = GenericToken;
+    res.instr = comand;
+    for(size_t i = 1; i < *clen; i++){
+        if(comand[i] == ' '){
+            res.info.stringlen = i;
+            *clen = i + 1;
+            return res;
+        }else if(comand[i] == '('){
+            res.type = BrInstrToken;
+            i += 1;
+            size_t start = i;
+            while(i < *clen){
+                if(comand[i] == ')'){
+                    res.type = BrInstrToken;
+                    res.info.special.instrlen = i;
+                    res.info.special.val = start;
+                    *clen = i + 1;
+                    return res;
+                }
+                i += 1;
+            }
+            RAISE(jbuff, RoundParenthesisError);
+        }else if(comand[i] >= '0' && comand[i] <= '9'){
+            char *endptr;
+            size_t start = i;
+            res.info.special.val = strtol(comand + i, &endptr, 10);
+            *clen = (size_t)(endptr - comand);
+            res.info.stringlen = start;
+            res.type = NumInsrtToken;
+            return res;
+        }
+    }
+    res.info.stringlen = *clen;
+    return res;
+}
+
+void parse_script(struct ProgramState *state, char *comands, size_t clen, struct ExceptionHandler *jbuff){
+    jbuff->not_exec[jbuff->bt_size - 1] = comands;
+    struct Token token;
+    size_t i = 0;
+    while(i < clen){
+        if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
+            i += 1;
+            continue;
+        }else if(comands[i] == '"'){
+            size_t start = clen - i;
+            token = stringToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
+            i = start;
+        }else if(comands[i] == ']'){
+            size_t start = clen - i;
+            token = instrToken(comands + i, &start, jbuff);
+            execute_instr(state, &token, jbuff);
+            i = start;
+        }else if(comands[i] == '{'){
+            size_t start = clen - i;
+            token = stackToken(comands + i, &start, jbuff);
+            execute_instr(state, &token, jbuff);
+            i = start;
+        }else if(comands[i] >= '0' && comands[i] <='9'){
+            size_t start = clen - i;
+            token = numericToken(comands + i, &start, jbuff);
+            execute_instr(state, &token, jbuff);
+            i = start;
+        }else if(comands[i] == '-'){
+            if(i == clen - 1 || comands[i + 1] <= '0' || comands[i + 1] >= '9'){
+                size_t start = clen - i;
+                token = numericToken(comands + i, &start, jbuff);
+                execute_instr(state, &token, jbuff);
+                i = start;
+            }else{
+            size_t start = clen - i;
+                token = scriptToken(comands + i, &start, jbuff);
+                execute_instr(state, &token, jbuff);
+                i = start;
+            }
+        }else{
+            size_t start = clen - i;
+            token = scriptToken(comands + i, &start, jbuff);
+            execute_instr(state, &token, jbuff);
+            i = start;
         }
     }
 }

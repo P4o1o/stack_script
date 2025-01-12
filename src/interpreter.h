@@ -48,14 +48,28 @@ enum TokenType{
     BrInstrToken,
     StackToken,
     GenericToken,
-	NumericToken,
+	NumInsrtToken,
+	IntegerToken,
+	DecimalToken
+};
+
+struct _special_instr{
+    size_t instrlen;
+    size_t val;
+};
+
+
+union TokenInfo{
+	double decimal;
+	int64_t integer;
+	size_t stringlen;
+	struct _special_instr special;
 };
 
 struct Token{
-    char *instr;
+	char *instr;
     enum TokenType type;
-    size_t instrlen;
-    size_t indx;
+	union TokenInfo info;
 };
 
 extern struct Builtins builtins;
