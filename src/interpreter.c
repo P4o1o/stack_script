@@ -401,7 +401,7 @@ struct Token stringToken(char *comand, size_t *clen, struct ExceptionHandler *jb
     res.instr = comand + 1;
     for(size_t i = 1; i < *clen; i++){
         if(comand[i] == '"'){
-            res.info.stringlen = i;
+            res.info.stringlen = i - 1;
             *clen = i + 1;
             return res;
         }
@@ -413,11 +413,18 @@ struct Token instrToken(char *comand, size_t *clen, struct ExceptionHandler *jbu
     struct Token res;
     res.type = InstrToken;
     res.instr = comand + 1;
+    size_t count = 0;
     for(size_t i = 1; i < *clen; i++){
         if(comand[i] == ']'){
-            res.info.stringlen = i;
-            *clen = i + 1;
-            return res;
+            if(count == 0){
+                res.info.stringlen = i - 1;
+                *clen = i + 1;
+                return res;
+            }
+            count -= 1;
+        }
+        if(comand[i] == '['){
+            count += 1;
         }
     }
     RAISE(jbuff, SquaredParenthesisError);
@@ -427,11 +434,18 @@ struct Token stackToken(char *comand, size_t *clen, struct ExceptionHandler *jbu
     struct Token res;
     res.type = StackToken;
     res.instr = comand + 1;
+    size_t count = 0;
     for(size_t i = 1; i < *clen; i++){
         if(comand[i] == '}'){
-            res.info.stringlen = i;
-            *clen = i + 1;
-            return res;
+            if(count == 0){
+                res.info.stringlen = i - 1;
+                *clen = i + 1;
+                return res;
+            }
+            count -= 1;
+        }
+        if(comand[i] == '['){
+            count += 1;
         }
     }
     RAISE(jbuff, CurlyParenthesisError);
@@ -504,39 +518,39 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
             size_t start = clen - i;
             token = stringToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
-            i = start;
+            i += start;
         }else if(comands[i] == ']'){
             size_t start = clen - i;
             token = instrToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
-            i = start;
+            i += start;
         }else if(comands[i] == '{'){
             size_t start = clen - i;
             token = stackToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
-            i = start;
+            i += start;
         }else if(comands[i] >= '0' && comands[i] <='9'){
             size_t start = clen - i;
             token = numericToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
-            i = start;
+            i += start;
         }else if(comands[i] == '-'){
             if(i == clen - 1 || comands[i + 1] <= '0' || comands[i + 1] >= '9'){
                 size_t start = clen - i;
                 token = numericToken(comands + i, &start, jbuff);
                 execute_instr(state, &token, jbuff);
-                i = start;
+                i += start;
             }else{
-            size_t start = clen - i;
+                size_t start = clen - i;
                 token = scriptToken(comands + i, &start, jbuff);
                 execute_instr(state, &token, jbuff);
-                i = start;
+                i += start;
             }
         }else{
             size_t start = clen - i;
             token = scriptToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
-            i = start;
+            i += start;
         }
     }
 }
