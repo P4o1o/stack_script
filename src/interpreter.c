@@ -350,7 +350,7 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
 
         case DecimalToken:
             elem.type = Floating;
-            elem.val.ival = token->info.decimal;
+            elem.val.fval = token->info.decimal;
             push_Stack(state->stack, elem, jbuff);
             break;
         case NumInsrtToken:
@@ -444,7 +444,7 @@ struct Token stackToken(char *comand, size_t *clen, struct ExceptionHandler *jbu
             }
             count -= 1;
         }
-        if(comand[i] == '['){
+        if(comand[i] == '{'){
             count += 1;
         }
     }
@@ -473,7 +473,7 @@ struct Token scriptToken(char *comand, size_t *clen, struct ExceptionHandler *jb
     res.type = GenericToken;
     res.instr = comand;
     for(size_t i = 0; i < *clen; i++){
-        if(comand[i] == ' '){
+        if(comand[i] == ' ' || comand[i] == '\n' || comand[i] == '\t' || comand[i] == '\r' || comand[i] == '\0'){
             res.info.stringlen = i;
             *clen = i + 1;
             return res;
@@ -519,7 +519,7 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
             token = stringToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
             i += start;
-        }else if(comands[i] == ']'){
+        }else if(comands[i] == '['){
             size_t start = clen - i;
             token = instrToken(comands + i, &start, jbuff);
             execute_instr(state, &token, jbuff);
