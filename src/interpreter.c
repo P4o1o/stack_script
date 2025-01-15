@@ -472,7 +472,7 @@ struct Token scriptToken(char *comand, size_t *clen, struct ExceptionHandler *jb
     struct Token res;
     res.type = GenericToken;
     res.instr = comand;
-    for(size_t i = 1; i < *clen; i++){
+    for(size_t i = 0; i < *clen; i++){
         if(comand[i] == ' '){
             res.info.stringlen = i;
             *clen = i + 1;
