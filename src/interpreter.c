@@ -29,7 +29,7 @@ const br_operations BR_INSTR_OP[] ={
 };
 #define BROP_MAP_SIZE 32
 
-#define INSTR_SIZE 55
+#define INSTR_SIZE 67
 char* INSTRUCTIONS[] = {
         "int", "clear", "quote", "<=", "dup",
         "or", "swap", "+", "and", "dip",
@@ -42,6 +42,9 @@ char* INSTRUCTIONS[] = {
         "stack", "push", "pop", "inject", "compress",
         "none", "type", "INSTR", "INT", "FLOAT",
         "BOOL", "STR", "TYPE", "NONE", "STACK",
+        "sin", "cos", "tan", "arcsin", "arccos",
+        "arctan", "sinh", "cosh", "tanh", "arcsinh",
+        "arccosh", "arctanh",
 };
 const operations INSTR_OP[] ={
         op_int, op_clear, op_quote, op_lowereq, op_dup,
@@ -54,11 +57,14 @@ const operations INSTR_OP[] ={
         op_equal, op_greathereq, op_true, op_false, op_split,
         op_stack, op_push, op_pop, op_inject, op_compress,
         op_none, op_type, op_INSTR, op_INT, op_FLOAT,
-        op_BOOL, op_STR, op_TYPE, op_NONE, op_STACK
+        op_BOOL, op_STR, op_TYPE, op_NONE, op_STACK,
+        op_sin, op_cos, op_tan, op_arcsin, op_arccos,
+        op_arctan, op_sinh, op_cosh, op_tanh, op_arcsinh, op_arccosh,
+        op_arctanh,
 };
-#define OP_MAP_SIZE 64
+#define OP_MAP_SIZE 128
 
-#define IS_INDENT(comand) ((int) ((comand) == ' ' || (comand) == '\n' || (comand) == '\t' || (comand) == '\r' || (comand) == '\0'))
+#define IS_INDENT(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n' || (c) == '\0')
 
 struct Builtins builtins;
 
@@ -320,15 +326,16 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
             break;
         
         case BrInstrToken:
-            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->info.special.val - 1) & (BROP_MAP_SIZE - 1));
+            index = (size_t)(SipHash_2_4(HASHKEY_BROP0, HASHKEY_BROP1, token->instr, token->info.special.val) & (BROP_MAP_SIZE - 1));
             struct BrOperationElem* bropelem = builtins.brop_map[index];
             while (bropelem != NULL) {
-                if (strncmp(token->instr, bropelem->key, token->info.special.val) == 0 && token->info.special.val - 1 == bropelem->key_len) {
-                    bropelem->brop(state, token->instr + token->info.special.val, token->info.special.instrlen - token->info.special.val, jbuff);
+                if (strncmp(token->instr, bropelem->key, token->info.special.val) == 0 && token->info.special.val == bropelem->key_len) {
+                    bropelem->brop(state, token->instr + token->info.special.val + 1, token->info.special.instrlen, jbuff);
                     return;
                 }
                 bropelem = bropelem->next;
             }
+            RAISE(jbuff, InvalidInstruction);
             break;
         
         case StackToken:
@@ -363,6 +370,7 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
                 }
                 numopelem = numopelem->next;
             }
+            RAISE(jbuff, InvalidInstruction);
             break;
         case GenericToken:
             index = (size_t)(SipHash_2_4(HASHKEY_OP0, HASHKEY_OP1, token->instr, token->info.stringlen) & (OP_MAP_SIZE - 1));
@@ -473,19 +481,18 @@ struct Token scriptToken(char *comand, size_t *clen, struct ExceptionHandler *jb
     res.type = GenericToken;
     res.instr = comand;
     for(size_t i = 0; i < *clen; i++){
-        if(comand[i] == ' ' || comand[i] == '\n' || comand[i] == '\t' || comand[i] == '\r' || comand[i] == '\0'){
+        if(IS_INDENT(comand[i])){
             res.info.stringlen = i;
             *clen = i + 1;
             return res;
         }else if(comand[i] == '('){
             res.type = BrInstrToken;
+            res.info.special.val = i;
             i += 1;
-            size_t start = i;
             while(i < *clen){
                 if(comand[i] == ')'){
                     res.type = BrInstrToken;
-                    res.info.special.instrlen = i;
-                    res.info.special.val = start;
+                    res.info.special.instrlen = i - 1 - res.info.special.val;
                     *clen = i + 1;
                     return res;
                 }
@@ -494,10 +501,9 @@ struct Token scriptToken(char *comand, size_t *clen, struct ExceptionHandler *jb
             RAISE(jbuff, RoundParenthesisError);
         }else if(comand[i] >= '0' && comand[i] <= '9'){
             char *endptr;
-            size_t start = i;
+            res.info.stringlen = i;
             res.info.special.val = strtol(comand + i, &endptr, 10);
             *clen = (size_t)(endptr - comand);
-            res.info.stringlen = start;
             res.type = NumInsrtToken;
             return res;
         }
@@ -511,7 +517,7 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
     struct Token token;
     size_t i = 0;
     while(i < clen){
-        if(comands[i] == ' ' || comands[i] == '\n' || comands[i] == '\t' || comands[i] == '\r' || comands[i] == '\0'){
+        if(IS_INDENT(comands[i])){
             i += 1;
             continue;
         }else if(comands[i] == '"'){
@@ -535,7 +541,7 @@ void parse_script(struct ProgramState *state, char *comands, size_t clen, struct
             execute_instr(state, &token, jbuff);
             i += start;
         }else if(comands[i] == '-'){
-            if(i == clen - 1 || comands[i + 1] <= '0' || comands[i + 1] >= '9'){
+            if(i + 1 < clen && comands[i + 1] >= '0' && comands[i + 1] <= '9'){
                 size_t start = clen - i;
                 token = numericToken(comands + i, &start, jbuff);
                 execute_instr(state, &token, jbuff);

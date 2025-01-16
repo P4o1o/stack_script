@@ -222,3 +222,172 @@ void op_mod(struct ProgramState *state, struct ExceptionHandler *jbuff){
     state->stack->content[resindex].val.ival =
                 state->stack->content[resindex].val.ival % state->stack->content[state->stack->next].val.ival;
 }
+
+
+void op_sin(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = sin(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = sin((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_cos(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = cos(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = cos((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_tan(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = tan(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = tan((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arccos(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = acos(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = acos((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arcsin(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = asin(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = asin((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arctan(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = atan(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = atan((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_sinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = sinh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = sinh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_cosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = cosh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = cosh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_tanh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = tanh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = tanh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arcsinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = asinh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = asinh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arccosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = acosh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = acosh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_arctanh(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next < 1)
+        RAISE(jbuff, StackUnderflow);
+    size_t indx = state->stack->next - 1;
+    if(state->stack->content[indx].type == Floating){
+        state->stack->content[indx].val.fval = atanh(state->stack->content[indx].val.fval);
+    }else if(state->stack->content[indx].type == Integer){
+        state->stack->content[indx].val.fval = atanh((double) state->stack->content[indx].val.ival);
+        state->stack->content[indx].type = Floating;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
