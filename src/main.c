@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "interpreter.h"
+#include "memdebug.h"
 #define BUFFERSIZE 256
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -99,17 +100,19 @@ int main(int argc, char *argv[]) {
             if (fgets(bufferin, BUFFERSIZE, stdin) != NULL) {
                 execute(&state, bufferin, try_buf);
             }
+            size_t elem_to_print = MIN(size, state.stack->next);
+            print_stack(&state, elem_to_print);
+            continue;
         }CATCH(try_buf, ProgramExit) {
             break;
         }CATCHALL{
             print_Exception(try_buf);
-            reload_Exceptionhandler(try_buf);
         }
-        size_t elem_to_print = MIN(size, state.stack->next);
-        print_stack(&state, elem_to_print);
+        reload_Exceptionhandler(try_buf);
     }
     free_ExceptionHandler(try_buf);
     free_PrgState(&state);
     free_builtins();
+    print_allocated_mem();
     return 0;
 }

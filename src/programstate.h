@@ -23,6 +23,8 @@ struct ExceptionHandler{
     size_t bt_size;
     size_t bt_capacity;
     struct OpenMemMap **openmemmap;
+    struct ExceptionHandler **inject_err;
+    size_t stack_num;
 };
 
 #define OM_VEC_CAPACITY 32
@@ -48,6 +50,7 @@ struct ExceptionHandler{
 #define SquaredParenthesisError 12
 #define StringQuotingError 13
 #define CurlyParenthesisError 14
+#define InjectError 15
 
 void print_Exception(struct ExceptionHandler* exc);
 

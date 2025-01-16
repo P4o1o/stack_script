@@ -81,6 +81,7 @@ struct ExceptionHandler *init_ExceptionHandler(){
     for(size_t i = 0; i < OM_VEC_CAPACITY; i++){
         try_buf->openmemmap[i] = NULL;
     }
+    try_buf->stack_num = 0;
     return try_buf;
 }
 
@@ -97,6 +98,15 @@ void reload_Exceptionhandler(struct ExceptionHandler *try_buf){
     free(try_buf->not_exec);
     try_buf->not_exec = malloc(sizeof(char *) * BT_VEC_CAPACITY);
     try_buf->bt_size = 1;
+    for (size_t i = 0; i < try_buf->stack_num; i++){
+        if(try_buf->inject_err[i] != NULL){
+            free_ExceptionHandler(try_buf->inject_err[i]);
+        }
+    }
+    if(try_buf->stack_num != 0){
+        free(try_buf->inject_err);
+    }
+    try_buf->stack_num = 0;
 }
 
 void free_ExceptionHandler(struct ExceptionHandler *try_buf){
@@ -110,6 +120,14 @@ void free_ExceptionHandler(struct ExceptionHandler *try_buf){
         }
     }
     free(try_buf->openmemmap);
+    for (size_t i = 0; i < try_buf->stack_num; i++){
+        if(try_buf->inject_err[i] != NULL){
+            free_ExceptionHandler(try_buf->inject_err[i]);
+        }
+    }
+    if(try_buf->stack_num != 0){
+        free(try_buf->inject_err);
+    }
     free(try_buf);
 }
 
@@ -155,6 +173,9 @@ void print_Exception(struct ExceptionHandler *exc) {
         case FileNotCreatable:
             excstr = "File not creatable";
             break;
+        case InjectError:
+            excstr = "inject failed";
+            break;
         default:
             UNREACHABLE;
     }
@@ -169,5 +190,15 @@ void print_Exception(struct ExceptionHandler *exc) {
             tabs[i] = '\t';
         }
         free(tabs);
+    }
+    if(exc->exit_value == InjectError){
+        for (size_t i = 0; i < exc->stack_num; i++){
+            if(exc->inject_err[i] != NULL){
+                printf("Inject Failed in stack %ld:\n", i);
+                print_Exception(exc->inject_err[i]);
+                printf("\n");
+            }
+        }
+        
     }
 }

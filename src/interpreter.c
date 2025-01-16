@@ -825,7 +825,7 @@ void numop_inject(struct ProgramState *state, size_t num, struct ExceptionHandle
 }
 
 void numop_pinject(struct ProgramState *state, size_t num, struct ExceptionHandler *jbuff) {
-if (state->stack->next < num + 1)
+    if (state->stack->next < num + 1)
         RAISE(jbuff, StackUnderflow);
     state->stack->next -= 1;
     if(state->stack->content[state->stack->next].type != Instruction){
@@ -841,13 +841,30 @@ if (state->stack->next < num + 1)
     char *mem = state->stack->content[state->stack->next].val.instr;
     add_memory(jbuff, mem);
     add_backtrace(jbuff);
+    jbuff->stack_num = num;
+    jbuff->inject_err = malloc(sizeof(struct ExceptionHandler *) * num);
+    int error = 0;
 #pragma omp parallel for schedule(dynamic)
     for(size_t i = state->stack->next - num; i < state->stack->next; i++){
         struct ProgramState stat;
         stat.stack = state->stack->content[i].val.stack;
         stat.env = state->env;
-        parse_script(&stat, mem, strlen(mem), jbuff);
+        jbuff->inject_err[i] = init_ExceptionHandler();
+        if (jbuff->inject_err[i] == NULL)
+            exit(-1);
+        TRY(jbuff->inject_err[i]) {
+            parse_script(&stat, mem, strlen(mem), jbuff->inject_err[i]);
+        }CATCHALL{
+            error = 1;
+            continue;
+        }
+        free_ExceptionHandler(jbuff->inject_err[i]);
+        jbuff->inject_err[i] = NULL;
     }
+    if(error)
+        RAISE(jbuff, InjectError);
+    free(jbuff->inject_err);
+    jbuff->stack_num = 0;
     remove_backtrace(jbuff);
     remove_memory(jbuff, mem);
 }
