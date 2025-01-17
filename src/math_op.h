@@ -7,6 +7,11 @@
 #include "programstate.h"
 #include <math.h>
 
+struct couple_d{
+    double a;
+    double b;
+};
+
 void op_size(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_int(struct ProgramState* state, struct ExceptionHandler* jbuff);
@@ -34,5 +39,8 @@ void op_tanh(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_arcsinh(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_arccosh(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_arctanh(struct ProgramState* state, struct ExceptionHandler* jbuff);
+
+void op_factorial(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_gamma(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 #endif

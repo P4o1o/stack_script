@@ -135,6 +135,97 @@ void op_sqrt(struct ProgramState *state, struct ExceptionHandler *jbuff){
     }
 }
 
+static inline int _software_popcount64(uint64_t x) {
+    int count = 0;
+    while (x) {
+        count += x & 1;
+        x >>= 1;
+    }
+    return count;
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+    #define POPCOUNT64(x) __builtin_popcountll(x)
+#elif defined(_MSC_VER)
+    #include <intrin.h>
+    #if defined(_M_X64) || defined(_M_IX86)
+        #define POPCOUNT64(x) __popcnt64(x)
+    #else
+        #define POPCOUNT64(x) _software_popcount64(x)
+    #endif
+#else
+    #define POPCOUNT64(x) _software_popcount64(x)
+#endif
+
+
+double product(int64_t m, size_t len) {
+    if (len == 1) return (double) m;
+    if (len == 2) return (double) (m * (m - 2));
+    size_t hlen = len >> 1;
+    return product(m - ((int64_t) hlen) * 2, len - hlen) * product(m, hlen);
+}
+
+static const struct couple_d _odd_factorial(int64_t n){
+    struct couple_d res;
+    if (n < 3) {
+        res.a = 1.0;
+        res.b = 1.0;
+    }else if(n < 5){
+        res.a = 3.0;
+        res.b = 1.0;
+    }else{
+        struct couple_d oldres = _odd_factorial(n/2);
+        int64_t len = (n - 1) / 4;
+        if ((n % 4) != 2)
+            len += 1;
+        int64_t high = n - ((n + 1) & 1);
+        double oddSwing = product(high, len) / oldres.b;
+        res.b = oldres.a;
+        res.a = pow(res.b, 2) * oddSwing;
+    }
+    return res;
+}
+
+static inline const double factorial(int64_t n){
+    if (n < 10) {
+        double result = 1;
+        for (int64_t i = 2; i <= n; i++) {
+            result *= (double) i;
+        }
+        return result;
+    }
+    int64_t bits = n - (int64_t) POPCOUNT64((uint64_t) n);
+    return  _odd_factorial(n).a * pow(2.0, (double) bits);
+}
+
+void op_factorial(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        if(state->stack->content[resindex].val.ival < 0)
+            RAISE(jbuff, ValueError);
+        state->stack->content[resindex].val.fval = factorial(state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_gamma(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = tgamma(state->stack->content[resindex].val.fval);
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        state->stack->content[resindex].val.fval = tgamma((double) state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
 void op_opposite(struct ProgramState* state, struct ExceptionHandler* jbuff){
     if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
