@@ -3,7 +3,13 @@
 
 [2.7182818284590452353602874713527] define(e)
 
-[dup [ 1 - dup [*] dip] loop(dup 1 >) drop] define(factorial)
+[dup swap2 * -- exp *] define(exponential_d)
 
-[[2.7182818284590452353602874713527] dip pow] define(exp)
+[* -- exp 1 swap -] define(exponential_c)
+
+[dup swap2 - /] define(exponential_m)
+
+[dup dup2 pow swap3 dup dup3 1 - pow swap2 * -- exp * swap gamma / *] define(gamma_d)
+
+[swap2 - 2 pow dup2 2 * / -- exp swap 2 pi * * sqrt /] define(normal_d)
 
