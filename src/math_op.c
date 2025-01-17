@@ -135,6 +135,48 @@ void op_sqrt(struct ProgramState *state, struct ExceptionHandler *jbuff){
     }
 }
 
+void op_log(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = log(state->stack->content[resindex].val.fval);
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        state->stack->content[resindex].val.fval = log((double) state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_log2(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = log2(state->stack->content[resindex].val.fval);
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        state->stack->content[resindex].val.fval = log2((double) state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_log10(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = log10(state->stack->content[resindex].val.fval);
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        state->stack->content[resindex].val.fval = log10((double) state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
 static inline int _software_popcount64(uint64_t x) {
     int count = 0;
     while (x) {
@@ -158,11 +200,11 @@ static inline int _software_popcount64(uint64_t x) {
 #endif
 
 
-double product(int64_t m, size_t len) {
+double _arr_product(int64_t m, size_t len) {
     if (len == 1) return (double) m;
     if (len == 2) return (double) (m * (m - 2));
     size_t hlen = len >> 1;
-    return product(m - ((int64_t) hlen) * 2, len - hlen) * product(m, hlen);
+    return _arr_product(m - ((int64_t) hlen) * 2, len - hlen) * _arr_product(m, hlen);
 }
 
 static const struct couple_d _odd_factorial(int64_t n){
@@ -179,7 +221,7 @@ static const struct couple_d _odd_factorial(int64_t n){
         if ((n % 4) != 2)
             len += 1;
         int64_t high = n - ((n + 1) & 1);
-        double oddSwing = product(high, len) / oldres.b;
+        double oddSwing = _arr_product(high, len) / oldres.b;
         res.b = oldres.a;
         res.a = pow(res.b, 2) * oddSwing;
     }

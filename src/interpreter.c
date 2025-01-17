@@ -29,7 +29,7 @@ const br_operations BR_INSTR_OP[] ={
 };
 #define BROP_MAP_SIZE 32
 
-#define INSTR_SIZE 71
+#define INSTR_SIZE 74
 char* INSTRUCTIONS[] = {
         "int", "clear", "quote", "<=", "dup",
         "or", "swap", "+", "and", "dip",
@@ -45,7 +45,7 @@ char* INSTRUCTIONS[] = {
         "sin", "cos", "tan", "arcsin", "arccos",
         "arctan", "sinh", "cosh", "tanh", "arcsinh",
         "arccosh", "arctanh", "exp", "--", "!",
-        "gamma"
+        "gamma", "log", "log2", "log10"
 };
 const operations INSTR_OP[] ={
         op_int, op_clear, op_quote, op_lowereq, op_dup,
@@ -62,7 +62,7 @@ const operations INSTR_OP[] ={
         op_sin, op_cos, op_tan, op_arcsin, op_arccos,
         op_arctan, op_sinh, op_cosh, op_tanh, op_arcsinh,
         op_arccosh, op_arctanh, op_exp, op_opposite, op_factorial,
-        op_gamma
+        op_gamma, op_log, op_log2, op_log10
 };
 #define OP_MAP_SIZE 128
 
