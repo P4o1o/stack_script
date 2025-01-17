@@ -16,6 +16,7 @@ void print_usage() {
         "\t-v<size>\t print the last <size> element of the stack after every input.\n" \
         "\t-h\t\t print this message.\n" \
         "\t-m\t\t load the math library before the shell starts\n" \
+        "\t-m\t\t load the probability library before the shell starts\n" \
         "\t-s\t\t load the stack operations library before the shell starts\n\n"
     );
 }
@@ -72,6 +73,9 @@ int main(int argc, char *argv[]) {
                 }
                 else if (argv[1][i] == 's') {
                     load_file(&state, "stackop.sksp");
+                }
+                else if (argv[1][i] == 'p') {
+                    load_file(&state, "probability.sksp");
                 }
                 else {
                     print_usage();

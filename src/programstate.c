@@ -31,7 +31,7 @@ inline void free_Stack(struct Stack *stack){
 }
 
 static inline struct Environment *init_Environment(size_t capacity){
-    struct Environment *res = malloc(sizeof(struct Stack));
+    struct Environment *res = malloc(sizeof(struct Environment));
     if(res == NULL)
         return NULL;
     res->content = malloc(sizeof(struct EnvElem *) * capacity);

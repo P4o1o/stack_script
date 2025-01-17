@@ -135,6 +135,33 @@ void op_sqrt(struct ProgramState *state, struct ExceptionHandler *jbuff){
     }
 }
 
+void op_opposite(struct ProgramState* state, struct ExceptionHandler* jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = - state->stack->content[resindex].val.fval;
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].val.ival = - state->stack->content[resindex].val.ival;
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
+void op_exp(struct ProgramState *state, struct ExceptionHandler *jbuff){
+    if(state->stack->next == 0)
+        RAISE(jbuff, StackUnderflow);
+    size_t resindex = state->stack->next - 1;
+    if(state->stack->content[resindex].type == Floating){
+        state->stack->content[resindex].val.fval = exp(state->stack->content[resindex].val.fval);
+    }else if(state->stack->content[resindex].type == Integer){
+        state->stack->content[resindex].type = Floating;
+        state->stack->content[resindex].val.fval = exp((double) state->stack->content[resindex].val.ival);
+    }else{
+        RAISE(jbuff, InvalidOperands);
+    }
+}
+
 void op_pow(struct ProgramState *state, struct ExceptionHandler *jbuff){
     if(state->stack->next < 2)
         RAISE(jbuff, StackUnderflow);
@@ -225,7 +252,7 @@ void op_mod(struct ProgramState *state, struct ExceptionHandler *jbuff){
 
 
 void op_sin(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -239,7 +266,7 @@ void op_sin(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_cos(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -253,7 +280,7 @@ void op_cos(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_tan(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -267,7 +294,7 @@ void op_tan(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arccos(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -281,7 +308,7 @@ void op_arccos(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arcsin(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -295,7 +322,7 @@ void op_arcsin(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arctan(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -309,7 +336,7 @@ void op_arctan(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_sinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -323,7 +350,7 @@ void op_sinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_cosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -337,7 +364,7 @@ void op_cosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_tanh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -351,7 +378,7 @@ void op_tanh(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arcsinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -365,7 +392,7 @@ void op_arcsinh(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arccosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){
@@ -379,7 +406,7 @@ void op_arccosh(struct ProgramState* state, struct ExceptionHandler* jbuff){
 }
 
 void op_arctanh(struct ProgramState* state, struct ExceptionHandler* jbuff){
-    if(state->stack->next < 1)
+    if(state->stack->next == 0)
         RAISE(jbuff, StackUnderflow);
     size_t indx = state->stack->next - 1;
     if(state->stack->content[indx].type == Floating){

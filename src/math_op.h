@@ -18,6 +18,8 @@ void op_div(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_mod(struct ProgramState *state, struct ExceptionHandler *jbuff);
 void op_pow(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_sqrt(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_exp(struct ProgramState* state, struct ExceptionHandler* jbuff);
+void op_opposite(struct ProgramState* state, struct ExceptionHandler* jbuff);
 
 void op_sin(struct ProgramState* state, struct ExceptionHandler* jbuff);
 void op_cos(struct ProgramState* state, struct ExceptionHandler* jbuff);

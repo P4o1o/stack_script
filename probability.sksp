@@ -1,0 +1,6 @@
+
+[dup swap2 * -- exp *] define(exponential_d)
+
+[* -- exp 1 swap -] define(exponential_c)
+
+[dup swap2 - /] define(exponential_m)
