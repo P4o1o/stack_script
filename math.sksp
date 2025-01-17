@@ -11,5 +11,5 @@
 
 [dup dup2 pow swap3 dup dup3 1 - pow swap2 * -- exp * swap gamma / *] define(gamma_d)
 
-[swap2 - 2 pow dup2 2 * / -- exp swap 2 pi * * sqrt /] define(normal_d)
+[swap2 - 2 pow dup1 2 * / -- exp swap 2 pi * * sqrt /] define(normal_d)
 
