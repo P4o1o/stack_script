@@ -200,11 +200,11 @@ static inline int _software_popcount64(uint64_t x) {
 #endif
 
 
-double _arr_product(int64_t m, size_t len) {
+double _arr_product(int64_t m, int64_t len) {
     if (len == 1) return (double) m;
     if (len == 2) return (double) (m * (m - 2));
-    size_t hlen = len >> 1;
-    return _arr_product(m - ((int64_t) hlen) * 2, len - hlen) * _arr_product(m, hlen);
+    int64_t hlen = len >> 1;
+    return _arr_product(m - hlen * 2, len - hlen) * _arr_product(m, hlen);
 }
 
 static const struct couple_d _odd_factorial(int64_t n){
