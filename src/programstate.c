@@ -176,6 +176,9 @@ void print_Exception(struct ExceptionHandler *exc) {
         case InjectError:
             excstr = "inject failed";
             break;
+        case InvalidNameDefine:
+            excstr = "define: invalid name";
+            break;
         default:
             UNREACHABLE;
     }

@@ -177,68 +177,68 @@ void op_log10(struct ProgramState* state, struct ExceptionHandler* jbuff){
     }
 }
 
-static inline int _software_popcount64(uint64_t x) {
-    int count = 0;
-    while (x) {
-        count += x & 1;
-        x >>= 1;
-    }
-    return count;
-}
-
 #if defined(__GNUC__) || defined(__clang__)
     #define POPCOUNT64(x) __builtin_popcountll(x)
 #elif defined(_MSC_VER)
     #include <intrin.h>
     #if defined(_M_X64) || defined(_M_IX86)
         #define POPCOUNT64(x) __popcnt64(x)
-    #else
-        #define POPCOUNT64(x) _software_popcount64(x)
     #endif
-#else
-    #define POPCOUNT64(x) _software_popcount64(x)
 #endif
 
+#if defined(POPCOUNT64)
 
-double _arr_product(int64_t m, int64_t len) {
-    if (len == 1) return (double) m;
-    if (len == 2) return (double) (m * (m - 2));
-    int64_t hlen = len >> 1;
-    return _arr_product(m - hlen * 2, len - hlen) * _arr_product(m, hlen);
-}
-
-static const struct couple_d _odd_factorial(int64_t n){
-    struct couple_d res;
-    if (n < 3) {
-        res.a = 1.0;
-        res.b = 1.0;
-    }else if(n < 5){
-        res.a = 3.0;
-        res.b = 1.0;
-    }else{
-        struct couple_d oldres = _odd_factorial(n/2);
-        int64_t len = (n - 1) / 4;
-        if ((n % 4) != 2)
-            len += 1;
-        int64_t high = n - ((n + 1) & 1);
-        double oddSwing = _arr_product(high, len) / oldres.b;
-        res.b = oldres.a;
-        res.a = pow(res.b, 2) * oddSwing;
+    double _arr_product(int64_t m, int64_t len) {
+        if (len == 1) return (double) m;
+        if (len == 2) return (double) (m * (m - 2));
+        int64_t hlen = len >> 1;
+        return _arr_product(m - hlen * 2, len - hlen) * _arr_product(m, hlen);
     }
-    return res;
-}
+
+    static const struct couple_d _odd_factorial(int64_t n){
+        struct couple_d res;
+        if (n < 3) {
+            res.a = 1.0;
+            res.b = 1.0;
+        }else if(n < 5){
+            res.a = 3.0;
+            res.b = 1.0;
+        }else{
+            struct couple_d oldres = _odd_factorial(n/2);
+            int64_t len = (n - 1) / 4;
+            if ((n % 4) != 2)
+                len += 1;
+            int64_t high = n - ((n + 1) & 1);
+            double oddSwing = _arr_product(high, len) / oldres.b;
+            res.b = oldres.a;
+            res.a = pow(res.b, 2) * oddSwing;
+        }
+        return res;
+    }
+
+    static inline const double factorial(int64_t n){
+        if (n < 10) {
+            double result = 1.0;
+            for (int64_t i = 2; i <= n; i++) {
+                result *= (double) i;
+            }
+            return result;
+        }
+        int64_t bits = n - (int64_t) POPCOUNT64((uint64_t) n);
+        return  _odd_factorial(n).a * pow(2.0, (double) bits);
+    }
+
+#else
 
 static inline const double factorial(int64_t n){
-    if (n < 10) {
-        double result = 1;
-        for (int64_t i = 2; i <= n; i++) {
-            result *= (double) i;
-        }
-        return result;
+    double result = 1.0;
+    for (int64_t i = 2; i <= n; i++) {
+        result *= (double) i;
     }
-    int64_t bits = n - (int64_t) POPCOUNT64((uint64_t) n);
-    return  _odd_factorial(n).a * pow(2.0, (double) bits);
+    return result;
 }
+
+#endif
 
 void op_factorial(struct ProgramState* state, struct ExceptionHandler* jbuff){
     if(state->stack->next == 0)

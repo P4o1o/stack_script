@@ -50,7 +50,8 @@ struct ExceptionHandler{
 #define SquaredParenthesisError 12
 #define StringQuotingError 13
 #define CurlyParenthesisError 14
-#define InjectError 15
+#define InvalidNameDefine 15
+#define InjectError 16
 
 void print_Exception(struct ExceptionHandler* exc);
 

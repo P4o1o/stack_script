@@ -68,6 +68,8 @@ const operations INSTR_OP[] ={
 
 #define IS_INDENT(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n' || (c) == '\0')
 
+#define RESERVED_CHAR(c) (IS_INDENT(c) || (c) == '[' || (c) == ']' || (c) == '{' || (c) == '}' || (c) == '(' || (c) == ')' || (c) == '"')
+
 struct Builtins builtins;
 
 #define HASHKEY_OP0 0x734ad7e3439432a3ULL
@@ -337,7 +339,20 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
                 }
                 bropelem = bropelem->next;
             }
-            RAISE(jbuff, InvalidInstruction);
+            char** funct = malloc(sizeof(char*));
+            if (funct == NULL)
+                RAISE(jbuff, ProgramPanic);
+            if (get_Environment(state->env, token->instr, token->info.stringlen, funct) == 1) {
+                char* text = *funct;
+                free(funct);
+                add_backtrace(jbuff);
+                parse_script(state, text, strlen(text), jbuff);
+                remove_backtrace(jbuff);
+                return;
+            }else{
+                free(funct);
+                RAISE(jbuff, InvalidInstruction);
+            }
             break;
         
         case StackToken:
@@ -432,8 +447,7 @@ struct Token instrToken(char *comand, size_t *clen, struct ExceptionHandler *jbu
                 return res;
             }
             count -= 1;
-        }
-        if(comand[i] == '['){
+        }else if(comand[i] == '['){
             count += 1;
         }
     }
@@ -453,8 +467,7 @@ struct Token stackToken(char *comand, size_t *clen, struct ExceptionHandler *jbu
                 return res;
             }
             count -= 1;
-        }
-        if(comand[i] == '{'){
+        }else if(comand[i] == '{'){
             count += 1;
         }
     }
@@ -1297,6 +1310,10 @@ void brop_define(struct ProgramState *state, char *funcname, size_t fnlen, struc
     if(state->stack->content[state->stack->next].type != Instruction) {
         state->stack->next += 1;
         RAISE(jbuff, InvalidOperands);
+    }
+    for (size_t i = 0; i < fnlen; i++){
+        if(RESERVED_CHAR(funcname[i]))
+            RAISE(jbuff, InvalidNameDefine);
     }
     set_Environment(state->env, funcname, fnlen, state->stack->content[state->stack->next].val.instr, jbuff);
 }
