@@ -308,6 +308,7 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
     jbuff->not_exec[jbuff->bt_size - 1] = token->instr;
     struct StackElem elem;
     size_t index;
+    char** funct;
     switch (token->type){
         case StringToken:
             elem.type = String;
@@ -339,7 +340,7 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
                 }
                 bropelem = bropelem->next;
             }
-            char** funct = malloc(sizeof(char*));
+            funct = malloc(sizeof(char*));
             if (funct == NULL)
                 RAISE(jbuff, ProgramPanic);
             if (get_Environment(state->env, token->instr, token->info.stringlen, funct) == 1) {
@@ -399,7 +400,7 @@ void execute_instr(struct ProgramState *state, struct Token *token, struct Excep
                 }
                 opelem = opelem->next;
             }
-            char** funct = malloc(sizeof(char*));
+            funct = malloc(sizeof(char*));
             if (funct == NULL)
                 RAISE(jbuff, ProgramPanic);
             if (get_Environment(state->env, token->instr, token->info.stringlen, funct) == 1) {
