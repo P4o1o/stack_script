@@ -717,7 +717,8 @@ void op_split(struct ProgramState* state, struct ExceptionHandler* jbuff){
         for(size_t i = 0; i < src->next; i++){
             push_Stack(state->stack, src->content[i], jbuff);
         }
-        free_Stack(src);
+        free(src->content);
+        free(src);
     }else{
         state->stack->next += 1;
         RAISE(jbuff, InvalidOperands);
