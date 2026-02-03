@@ -3,7 +3,9 @@
 //
 
 use std::env;
-use std::io::{self, BufRead, Write};
+// ...existing code...
+use rustyline::error::ReadlineError;
+use rustyline::{Editor, history::FileHistory};
 
 use sscript::error::SscriptError;
 use sscript::interpreter::{execute, load_file, ProgramState};
@@ -113,29 +115,26 @@ fn main() {
     println!("STACK_SCRIPT v{}", VERSION);
     println!("-------------------------------------------");
     
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
-    
+    let mut rl = Editor::<(), FileHistory>::new().unwrap();
+    let _ = rl.load_history(".sscript_history");
     loop {
-        print!(">");
-        stdout.flush().unwrap();
-        
-        let mut input = String::new();
-        match stdin.lock().read_line(&mut input) {
-            Ok(0) => break, // EOF
-            Ok(_) => {
-                match execute(&mut state, &input) {
+        let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(line.clone()).unwrap_or(false);
+                match execute(&mut state, &line) {
                     Ok(()) => {}
                     Err(SscriptError::ProgramExit) => break,
                     Err(e) => {
                         eprintln!("{}", e);
                     }
                 }
-                
-                // Print stack elements if requested
                 if print_size > 0 {
                     print_stack(&state.stack, print_size);
                 }
+            }
+            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
+                break;
             }
             Err(e) => {
                 eprintln!("Error reading input: {}", e);
@@ -143,4 +142,5 @@ fn main() {
             }
         }
     }
+    let _ = rl.save_history(".sscript_history");
 }
