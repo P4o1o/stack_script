@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Inner Stack Operations &#8212; stack_script 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=cb25574f" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="String Operations" href="string_operations.html" />
+    <link rel="prev" title="Loop Control" href="loop_control.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="inner-stack-operations">
+<h1>Inner Stack Operations<a class="headerlink" href="#inner-stack-operations" title="Link to this heading">¶</a></h1>
+<p>Inner stacks (or sub-stacks) are stack values that can themselves contain other values, including other stacks. They allow for advanced data structuring and manipulation, similar to arrays or lists in other languages, but with stack semantics.</p>
+<p>An inner stack is created using the <cite>stack</cite> keyword or by compressing the current stack with <cite>compress</cite>. You can also use curly braces <cite>{}</cite> to define a stack literal.</p>
+<section id="what-is-an-inner-stack">
+<h2><strong>What is an inner stack?</strong><a class="headerlink" href="#what-is-an-inner-stack" title="Link to this heading">¶</a></h2>
+<p>An inner stack is a first-class value that behaves like a normal stack, but is itself an element of another stack. This allows you to group values, pass stacks as arguments, and perform operations inside them.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>stack 1 2 3 push push push   # =&gt; {1 2 3}
+{4 5 6}                     # stack literal
+</pre></div>
+</div>
+</section>
+<section id="creating-and-manipulating-inner-stacks">
+<h2><strong>Creating and manipulating inner stacks</strong><a class="headerlink" href="#creating-and-manipulating-inner-stacks" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><cite>stack</cite>: Create a new empty inner stack.</p></li>
+<li><p><cite>{…}</cite>: Stack literal.</p></li>
+<li><p><cite>compress</cite>: Convert the current stack into an inner stack.</p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1 2 3 compress   # =&gt; {1 2 3}
+stack 4 push 5 push   # =&gt; {4 5}
+</pre></div>
+</div>
+</section>
+<section id="split">
+<h2><strong>split</strong><a class="headerlink" href="#split" title="Link to this heading">¶</a></h2>
+<p>If you use <cite>split</cite> on an inner stack, all its elements are pushed onto the main stack in order (from oldest to newest).</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{1 2 3} split   # =&gt; 1 2 3
+</pre></div>
+</div>
+</section>
+<section id="compose">
+<h2><strong>compose</strong><a class="headerlink" href="#compose" title="Link to this heading">¶</a></h2>
+<p>You can also compose two inner stacks with <cite>compose</cite>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{1 2} {3 4} compose   # =&gt; {1 2 3 4}
+</pre></div>
+</div>
+</section>
+<section id="compress">
+<h2><strong>compress</strong><a class="headerlink" href="#compress" title="Link to this heading">¶</a></h2>
+<p>The <cite>compress</cite> operation can also be used to collect all elements from the main stack into a new inner stack. This is useful for grouping values.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1 2 3 compress   # =&gt; {1 2 3}
+</pre></div>
+</div>
+</section>
+<section id="push">
+<h2><strong>push</strong><a class="headerlink" href="#push" title="Link to this heading">¶</a></h2>
+<p>Push a value into an inner stack. The value on top of the main stack is pushed into the inner stack below it.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>stack 1 push 2 push   # =&gt; {1 2}
+{3 4} 5 push          # =&gt; {3 4 5}
+</pre></div>
+</div>
+</section>
+<section id="pop">
+<h2><strong>pop</strong><a class="headerlink" href="#pop" title="Link to this heading">¶</a></h2>
+<p>Pop a value from an inner stack. The top value of the inner stack is removed and pushed onto the main stack.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{1 2 3} pop   # =&gt; {1 2} 3
+</pre></div>
+</div>
+</section>
+<section id="inject">
+<h2><strong>inject</strong><a class="headerlink" href="#inject" title="Link to this heading">¶</a></h2>
+<p>Execute a quoted instruction in the context of an inner stack. The quoted instruction is applied to the inner stack.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{1 2} [1 +] inject   # =&gt; {2 2}
+</pre></div>
+</div>
+</section>
+<section id="injectn-pinjectn">
+<h2><strong>injectN / pinjectN</strong><a class="headerlink" href="#injectn-pinjectn" title="Link to this heading">¶</a></h2>
+<p><cite>injectN</cite> applies a quoted instruction to N inner stacks. <cite>pinjectN</cite> does the same in parallel.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{1} {2} [1 +] inject2   # =&gt; {2} {3}
+</pre></div>
+</div>
+</section>
+<section id="type-and-type-constants-for-stacks">
+<h2><strong>Type and type constants for stacks</strong><a class="headerlink" href="#type-and-type-constants-for-stacks" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><cite>STACK</cite>: Type constant for inner stacks.</p></li>
+<li><p><cite>type</cite>: Pushes the type of the top value (returns <cite>STACK</cite> for inner stacks).</p></li>
+</ul>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>stack type   # =&gt; STACK
+{1 2} type   # =&gt; STACK
+</pre></div>
+</div>
+</section>
+<section id="why-use-inner-stacks">
+<h2><strong>Why use inner stacks?</strong><a class="headerlink" href="#why-use-inner-stacks" title="Link to this heading">¶</a></h2>
+<p>Inner stacks allow you to:
+- Group related values together
+- Pass collections as single arguments
+- Implement higher-level data structures
+- Perform local computations without affecting the main stack</p>
+<p>They are a powerful feature for advanced stack-based programming.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">stack_script</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="basic_operations.html">Basic Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stack_operations.html">Stack Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="input_output.html">Input/Output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="instruction_definition.html">Instruction Definition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="loop_control.html">Loop Control</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Inner Stack Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-an-inner-stack"><strong>What is an inner stack?</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-and-manipulating-inner-stacks"><strong>Creating and manipulating inner stacks</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#split"><strong>split</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compose"><strong>compose</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compress"><strong>compress</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#push"><strong>push</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pop"><strong>pop</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inject"><strong>inject</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#injectn-pinjectn"><strong>injectN / pinjectN</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#type-and-type-constants-for-stacks"><strong>Type and type constants for stacks</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-use-inner-stacks"><strong>Why use inner stacks?</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="string_operations.html">String Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="loop_control.html" title="previous chapter">Loop Control</a></li>
+      <li>Next: <a href="string_operations.html" title="next chapter">String Operations</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2026, P4o1o.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/inner_stack.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

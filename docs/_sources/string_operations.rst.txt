@@ -1,0 +1,1 @@
+.. include:: _sources/string_operations.rst.txt

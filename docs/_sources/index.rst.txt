@@ -1,7 +1,4 @@
-.. stack_script documentation master file, created by
-   sphinx-quickstart on Fri Apr 19 04:14:57 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. stack_script documentation master file, created by sphinx-quickstart
 
 Welcome to stack_script's documentation!
 ========================================
@@ -12,11 +9,12 @@ Welcome to stack_script's documentation!
 
    basic_operations
    stack_operations
-   loop_control
    input_output
    instruction_definition
+   loop_control
+   inner_stack
+   string_operations
    examples
-
 
 Indices and tables
 ==================
