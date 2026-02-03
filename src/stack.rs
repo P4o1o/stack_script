@@ -5,6 +5,7 @@
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
+use std::borrow::BorrowMut;
 
 use crate::primitives::{BOOL, NONE, TYPES};
 
@@ -320,6 +321,13 @@ impl Stack {
         for i in start..self.len() {
             println!("{}", self.content[i]);
         }
+    }
+
+    #[inline]
+    pub fn append_stack_consume(&mut self, other: &mut Stack) {
+        let s_borrow = self.borrow_mut();
+        // Move all elements from other to self, preserving order
+        s_borrow.content.extend(other.content.drain(..));
     }
     
     /// Deep clone for inner stacks (needed when duplicating stacks)

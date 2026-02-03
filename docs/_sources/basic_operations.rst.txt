@@ -1,10 +1,40 @@
 Basic Operations
 ================
 
+
 Introduction
 ------------
 
 In stack-based programming with Reverse Polish Notation (RPN), operations are performed by manipulating a stack data structure. RPN expressions are written in postfix notation, where operators follow their operands. This allows for efficient calculations without the need for parentheses or precedence rules.
+
+
+Data Types
+----------
+
+The language supports several data types, each with its own behavior and use cases:
+
+- **Integer (INT)**: 64-bit signed integers. Example: `42`
+- **Float (FLOAT)**: 64-bit floating point numbers. Example: `3.14`
+- **Boolean (BOOL)**: Logical values, either `true` or `false`.
+- **String (STR)**: Double-quoted strings. Example: `"hello"`
+- **Instruction (INSTR)**: Quoted code blocks. Example: `[1 2 +]`
+- **InnerStack (STACK)**: A stack value that can contain other values, including other stacks. Example: `{1 2 3}`
+- **None (NONE)**: Null value. Example: `none`
+- **Type (TYPE)**: Type values, such as `INT`, `FLOAT`, etc.
+
+You can use the `type` operator to get the type of the value on top of the stack:
+
+.. code-block:: text
+
+    42 type => INT
+    3.14 type => FLOAT
+    true type => BOOL
+    "hello" type => STR
+    [1 2 +] type => INSTR
+    {1 2 3} type => STACK
+    none type => NONE
+
+Type constants (`INT`, `FLOAT`, `BOOL`, `STR`, `INSTR`, `TYPE`, `NONE`, `STACK`) can be used in comparisons and type checks.
 
 Mathematical Operations
 ------------------------

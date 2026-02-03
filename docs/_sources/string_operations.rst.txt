@@ -1,0 +1,69 @@
+
+String Operations
+================
+
+Strings are textual values enclosed in double quotes, for example: "hello world". They are a fundamental data type and can be manipulated with various language operations.
+
+**Creating strings**
+-------------------
+
+To create a string, simply write it between double quotes:
+
+.. code-block:: text
+
+    "hello world"
+    "123"
+    "foo bar baz"
+
+**String operations**
+--------------------
+
+- Strings can be printed with `print` or `printall`.
+- They can be compared using comparison operators (`==`, `!=`, `<`, `>`, etc.).
+- They can be concatenated using `compose` (see below).
+- They can be split into parts with `split`.
+- They can be compressed into a single string with `compress`.
+
+**split**
+~~~~~~~~~
+
+The `split` operation divides a string into substrings separated by spaces (or by a specific delimiter with `split(delim)`). Each substring is pushed onto the stack as a new string.
+
+Example:
+
+.. code-block:: text
+
+    "hello world stack" split => "hello" "world" "stack"
+    "a,b,c" "," split => "a" "b" "c"
+
+**compress**
+~~~~~~~~~~~~
+
+The `compress` operation transforms a sequence of strings on the stack into a single concatenated string, separating values with a space.
+
+Example:
+
+.. code-block:: text
+
+    "hello" "world" compress => "hello world"
+
+**compose**
+~~~~~~~~~~~
+
+The `compose` operation can also be used with strings to concatenate them:
+
+.. code-block:: text
+
+    "foo" "bar" compose => "foobar"
+
+**Other examples**
+------------------
+
+.. code-block:: text
+
+    "one two three" split => "one" "two" "three"
+    "a-b-c" "-" split => "a" "b" "c"
+    "a" "b" "c" compress => "a b c"
+    "a" "b" compose => "ab"
+
+**Note**: Strings can also be used as arguments for other operations, such as `save`, `load`, or as keys for user-defined instructions.

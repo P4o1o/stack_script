@@ -1,0 +1,109 @@
+Inner Stack Operations
+=====================
+
+Inner stacks (or sub-stacks) are stack values that can themselves contain other values, including other stacks. They allow for advanced data structuring and manipulation, similar to arrays or lists in other languages, but with stack semantics.
+
+An inner stack is created using the `stack` keyword or by compressing the current stack with `compress`. You can also use curly braces `{}` to define a stack literal.
+
+**What is an inner stack?**
+--------------------------
+An inner stack is a first-class value that behaves like a normal stack, but is itself an element of another stack. This allows you to group values, pass stacks as arguments, and perform operations inside them.
+
+Example:
+
+.. code-block:: text
+
+    stack 1 2 3 push push push   # => {1 2 3}
+    {4 5 6}                     # stack literal
+
+**Creating and manipulating inner stacks**
+-----------------------------------------
+
+- `stack`: Create a new empty inner stack.
+- `{...}`: Stack literal.
+- `compress`: Convert the current stack into an inner stack.
+
+
+Example:
+
+.. code-block:: text
+
+    1 2 3 compress   # => {1 2 3}
+    stack 4 push 5 push   # => {4 5}
+
+**split**
+--------
+If you use `split` on an inner stack, all its elements are pushed onto the main stack in order (from oldest to newest).
+
+.. code-block:: text
+
+    {1 2 3} split   # => 1 2 3
+
+**compose**
+------------
+You can also compose two inner stacks with `compose`:
+
+.. code-block:: text
+
+    {1 2} {3 4} compose   # => {1 2 3 4}
+
+**compress**
+------------
+The `compress` operation can also be used to collect all elements from the main stack into a new inner stack. This is useful for grouping values.
+
+.. code-block:: text
+
+    1 2 3 compress   # => {1 2 3}
+
+**push**
+--------
+Push a value into an inner stack. The value on top of the main stack is pushed into the inner stack below it.
+
+.. code-block:: text
+
+    stack 1 push 2 push   # => {1 2}
+    {3 4} 5 push          # => {3 4 5}
+
+**pop**
+-------
+Pop a value from an inner stack. The top value of the inner stack is removed and pushed onto the main stack.
+
+.. code-block:: text
+
+    {1 2 3} pop   # => {1 2} 3
+
+**inject**
+----------
+Execute a quoted instruction in the context of an inner stack. The quoted instruction is applied to the inner stack.
+
+.. code-block:: text
+
+    {1 2} [1 +] inject   # => {2 2}
+
+**injectN / pinjectN**
+----------------------
+`injectN` applies a quoted instruction to N inner stacks. `pinjectN` does the same in parallel.
+
+.. code-block:: text
+
+    {1} {2} [1 +] inject2   # => {2} {3}
+
+**Type and type constants for stacks**
+--------------------------------------
+- `STACK`: Type constant for inner stacks.
+- `type`: Pushes the type of the top value (returns `STACK` for inner stacks).
+
+.. code-block:: text
+
+    stack type   # => STACK
+    {1 2} type   # => STACK
+
+**Why use inner stacks?**
+-------------------------
+Inner stacks allow you to:
+- Group related values together
+- Pass collections as single arguments
+- Implement higher-level data structures
+- Perform local computations without affecting the main stack
+
+They are a powerful feature for advanced stack-based programming.

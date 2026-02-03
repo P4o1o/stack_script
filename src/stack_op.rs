@@ -113,6 +113,11 @@ pub fn op_compose(stack: &mut Stack) -> Result<()> {
             stack.push(StackElem::String(composed.into()));
             Ok(())
         }
+        (StackElem::InnerStack(ai), StackElem::InnerStack(bi)) => {
+            ai.borrow_mut().append_stack_consume(&mut bi.borrow_mut());
+            stack.push(a);
+            Ok(())
+        }
         _ => {
             stack.push(a);
             stack.push(b);

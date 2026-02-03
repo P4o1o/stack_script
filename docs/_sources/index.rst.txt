@@ -12,10 +12,13 @@ Welcome to stack_script's documentation!
 
    basic_operations
    stack_operations
+   inner_stack
    loop_control
    input_output
    instruction_definition
    examples
+
+   string_operations
 
 
 Indices and tables
